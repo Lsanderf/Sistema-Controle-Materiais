@@ -1,13 +1,26 @@
 package com.Lucca.Projeto1.dto;
 
 import com.Lucca.Projeto1.model.TipoMovimentacao;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 
 public class MovimentacaoRequest {
-    private Long contratoId;
+    @NotNull(message = "O funcionário é obrigatório")
     private Long funcionarioId;
+
+    @NotNull(message = "O contrato é obrigatório")
+    private Long contratoId;
+
+    @NotNull(message = "O material é obrigatório")
     private Long materialId;
+
+    @NotNull(message = "A quantidade é obrigatória")
+    @Positive(message = "A quantidade deve ser maior que zero")
     private Integer quantidade;
+
+    @NotNull(message = "O tipo da movimentação é obrigatório")
     private TipoMovimentacao tipo;
+
 
     public Long getFuncionarioId() {
         return funcionarioId;

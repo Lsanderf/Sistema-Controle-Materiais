@@ -1,6 +1,7 @@
 package com.Lucca.Projeto1.service;
 
 import com.Lucca.Projeto1.dto.MovimentacaoRequest;
+import com.Lucca.Projeto1.dto.MovimentacaoResponse;
 import com.Lucca.Projeto1.model.*;
 import com.Lucca.Projeto1.repository.ContratoRepository;
 import com.Lucca.Projeto1.repository.FuncionarioRepository;
@@ -15,7 +16,7 @@ import java.util.List;
 @Service
 public class MovimentacaoService {
 
-    private MovimentacaoRepository movimentacaoRepository;
+    private final MovimentacaoRepository movimentacaoRepository;
     private final ContratoRepository contratoRepository;
     private final FuncionarioRepository funcionarioRepository;
     private final MaterialRepository materialRepository;
@@ -32,7 +33,7 @@ public class MovimentacaoService {
         this.materialRepository = materialRepository;
     }
     @Transactional
-    public Movimentacao registrarMovimentacao(MovimentacaoRequest request){
+    public MovimentacaoResponse registrarMovimentacao( MovimentacaoRequest request){
         if(request.getQuantidade() == null || request.getQuantidade() <= 0 ) {
             throw new IllegalArgumentException("A quantidade deve ser mair que 0");
         }
@@ -75,11 +76,17 @@ public class MovimentacaoService {
         movimentacao.setTipo(request.getTipo());
         movimentacao.setDataMovimentacao(LocalDateTime.now());
 
-        return movimentacaoRepository.save(movimentacao);
+        Movimentacao movimentacaoSalva =
+                movimentacaoRepository.save(movimentacao);
+
+        return converterParaResponse(movimentacaoSalva);
     }
 
-    public List<Movimentacao> listarTodas() {
-        return movimentacaoRepository.findAll();
+    public List<MovimentacaoResponse> listarTodas() {
+        return movimentacaoRepository.findAll()
+                .stream()
+                .map(this::converterParaResponse)
+                .toList();
     }
 
     public List<Movimentacao> listarPorFuncionario(
@@ -94,6 +101,18 @@ public class MovimentacaoService {
     ) {
         return movimentacaoRepository
                 .findByContratoId(contratoId);
+    }
+
+    private MovimentacaoResponse converterParaResponse(Movimentacao movimentacao) {
+        return new MovimentacaoResponse(
+                movimentacao.getId(),
+                movimentacao.getFuncionario().getNome(),
+                movimentacao.getContrato().getNome(),
+                movimentacao.getMaterial().getNome(),
+                movimentacao.getQuantidade(),
+                movimentacao.getTipo(),
+                movimentacao.getDataMovimentacao()
+        );
     }
 
     public List<Movimentacao> listarPorMaterial(

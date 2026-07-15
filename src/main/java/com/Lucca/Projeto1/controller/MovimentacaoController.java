@@ -6,6 +6,9 @@ import com.Lucca.Projeto1.service.MovimentacaoService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.Lucca.Projeto1.dto.MovimentacaoResponse;
+import java.util.List;
+import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -19,19 +22,19 @@ public class MovimentacaoController {
     }
 
     @PostMapping
-    public ResponseEntity<Movimentacao> registrar(
-            @RequestBody MovimentacaoRequest request
+    public ResponseEntity<MovimentacaoResponse> registrar(
+            @Valid @RequestBody MovimentacaoRequest request
     ) {
-        Movimentacao movimentacao =
+        MovimentacaoResponse response =
                 movimentacaoService.registrarMovimentacao(request);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(movimentacao);
+                .body(response);
     }
 
     @GetMapping
-    public ResponseEntity<List<Movimentacao>> listarTodas() {
+    public ResponseEntity<List<MovimentacaoResponse>> listarTodas() {
         return ResponseEntity.ok(
                 movimentacaoService.listarTodas()
         );
