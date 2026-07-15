@@ -9,6 +9,8 @@ import com.Lucca.Projeto1.repository.MaterialRepository;
 import com.Lucca.Projeto1.repository.MovimentacaoRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
+import com.Lucca.Projeto1.exception.RecursoNaoEncontradoException;
+import com.Lucca.Projeto1.exception.RegraNegocioException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -43,17 +45,21 @@ public class MovimentacaoService {
 
         Funcionario funcionario = funcionarioRepository.
                 findById(request.getFuncionarioId()).orElseThrow(() ->
-                        new RuntimeException("Funcionario não encontrado!"));
-        Contrato contrato = contratoRepository.
-                findById(request.getContratoId()).orElseThrow(() ->
-                        new RuntimeException("Funcionario não encontrado!"));
+                        new RecursoNaoEncontradoException(
+                                "Funcionário não encontrado"));
+        Contrato contrato = contratoRepository
+                .findById(request.getContratoId())
+                .orElseThrow(() ->
+                        new RecursoNaoEncontradoException(
+                                "Contrato não encontrado"));
 
         Material material = materialRepository.findById(request.getMaterialId()).orElseThrow(() ->
-                new RuntimeException("Material não encontrado!"));
+                new RecursoNaoEncontradoException(
+                        "Material não encontrado!"));
 
         if(request.getTipo() == TipoMovimentacao.RETIRADA){
-            if(material.getQuantidadeEstoque() < request.getQuantidade()){
-                throw new IllegalArgumentException(
+            if(material.getQuantidadeEstoque() < request.getQuantidade() || material.getQuantidadeEstoque() == null){
+                throw new RegraNegocioException(
                         "Quantidade insuficiente em estoque"
                 );
             }
@@ -64,6 +70,11 @@ public class MovimentacaoService {
             material.setQuantidadeEstoque(
                     material.getQuantidadeEstoque()
                             + request.getQuantidade());
+        }
+        if (!Boolean.TRUE.equals(contrato.getAtivo())) {
+            throw new RegraNegocioException(
+                    "Não é possível registrar movimentações em um contrato inativo"
+            );
         }
         materialRepository.save(material);
 
