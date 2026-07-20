@@ -1,20 +1,22 @@
 package com.Lucca.Projeto1.model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 
 
 @Entity
-@Table(name = "materiais")
+@Table(name = "tb_materiais")
 public class Material {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(nullable = false)
     private String nome;
+
+    @Column(nullable = false)
     private String descricao;
+
+    @Column(nullable = false)
     private Integer quantidadeEstoque;
 
 

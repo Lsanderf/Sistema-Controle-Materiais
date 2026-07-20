@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.Lucca.Projeto1.exception.RecursoNaoEncontradoException;
 import com.Lucca.Projeto1.model.Material;
 import com.Lucca.Projeto1.repository.MaterialRepository;
 
@@ -38,7 +39,7 @@ public class MaterialService {
     public Material buscarPorId(Long id) {
         return materialRepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Material não encontrado")
+                        new RecursoNaoEncontradoException("Material nao encontrado")
                 );
     }
 
@@ -46,7 +47,7 @@ public class MaterialService {
 
     Material materialExistente = materialRepository.findById(id)
             .orElseThrow(() ->
-                    new RuntimeException("Material não encontrado")
+                    new RecursoNaoEncontradoException("Material nao encontrado")
             );
 
     materialExistente.setNome(novosDados.getNome());

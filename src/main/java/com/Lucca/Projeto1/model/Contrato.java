@@ -3,13 +3,19 @@ package com.Lucca.Projeto1.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "contratos")
+@Table(name = "tb_contratos")
 public class Contrato {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(nullable = false)
     private String nome;
+
+    @Column(nullable = false)
     private String descricao;
+
+    @Column(nullable = false)
     private Boolean ativo;
 
     public Contrato(){}

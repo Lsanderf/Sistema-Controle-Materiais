@@ -37,44 +37,61 @@ public class MovimentacaoService {
     @Transactional
     public MovimentacaoResponse registrarMovimentacao( MovimentacaoRequest request){
         if(request.getQuantidade() == null || request.getQuantidade() <= 0 ) {
-            throw new IllegalArgumentException("A quantidade deve ser mair que 0");
+            throw new RegraNegocioException("A quantidade deve ser maior que 0");
         }
         if(request.getTipo() == null){
-            throw new IllegalArgumentException("O tipo da movimentação é obrigatoria!");
+            throw new RegraNegocioException("O tipo da movimentacao e obrigatorio!");
         }
 
         Funcionario funcionario = funcionarioRepository.
                 findById(request.getFuncionarioId()).orElseThrow(() ->
                         new RecursoNaoEncontradoException(
-                                "Funcionário não encontrado"));
+                                "Funcionario nao encontrado"));
         Contrato contrato = contratoRepository
                 .findById(request.getContratoId())
                 .orElseThrow(() ->
                         new RecursoNaoEncontradoException(
-                                "Contrato não encontrado"));
+                                "Contrato nao encontrado"));
 
         Material material = materialRepository.findById(request.getMaterialId()).orElseThrow(() ->
                 new RecursoNaoEncontradoException(
-                        "Material não encontrado!"));
+                        "Material nao encontrado!"));
+
+        if (!Boolean.TRUE.equals(contrato.getAtivo())) {
+            throw new RegraNegocioException(
+                    "Nao e possivel registrar movimentacoes em um contrato inativo"
+            );
+        }
+
+        int estoqueAtual = material.getQuantidadeEstoque() == null
+                ? 0
+                : material.getQuantidadeEstoque();
 
         if(request.getTipo() == TipoMovimentacao.RETIRADA){
-            if(material.getQuantidadeEstoque() < request.getQuantidade() || material.getQuantidadeEstoque() == null){
+            if(estoqueAtual < request.getQuantidade()){
                 throw new RegraNegocioException(
                         "Quantidade insuficiente em estoque"
                 );
             }
             material.setQuantidadeEstoque(
-                    material.getQuantidadeEstoque()
+                    estoqueAtual
                             - request.getQuantidade());
         }else if(request.getTipo() == TipoMovimentacao.DEVOLUCAO){
-            material.setQuantidadeEstoque(
-                    material.getQuantidadeEstoque()
-                            + request.getQuantidade());
-        }
-        if (!Boolean.TRUE.equals(contrato.getAtivo())) {
-            throw new RegraNegocioException(
-                    "Não é possível registrar movimentações em um contrato inativo"
+            int quantidadeAindaRetirada = calcularQuantidadeAindaRetirada(
+                    request.getFuncionarioId(),
+                    request.getContratoId(),
+                    request.getMaterialId()
             );
+
+            if (request.getQuantidade() > quantidadeAindaRetirada) {
+                throw new RegraNegocioException(
+                        "A devolucao nao pode ser maior que a quantidade ainda retirada"
+                );
+            }
+
+            material.setQuantidadeEstoque(
+                    estoqueAtual
+                            + request.getQuantidade());
         }
         materialRepository.save(material);
 
@@ -100,18 +117,24 @@ public class MovimentacaoService {
                 .toList();
     }
 
-    public List<Movimentacao> listarPorFuncionario(
+    public List<MovimentacaoResponse> listarPorFuncionario(
             Long funcionarioId
     ) {
         return movimentacaoRepository
-                .findByFuncionarioId(funcionarioId);
+                .findByFuncionarioId(funcionarioId)
+                .stream()
+                .map(this::converterParaResponse)
+                .toList();
     }
 
-    public List<Movimentacao> listarPorContrato(
+    public List<MovimentacaoResponse> listarPorContrato(
             Long contratoId
     ) {
         return movimentacaoRepository
-                .findByContratoId(contratoId);
+                .findByContratoId(contratoId)
+                .stream()
+                .map(this::converterParaResponse)
+                .toList();
     }
 
     private MovimentacaoResponse converterParaResponse(Movimentacao movimentacao) {
@@ -126,10 +149,37 @@ public class MovimentacaoService {
         );
     }
 
-    public List<Movimentacao> listarPorMaterial(
+    public List<MovimentacaoResponse> listarPorMaterial(
             Long materialId
     ) {
         return movimentacaoRepository
-                .findByMaterialId(materialId);
+                .findByMaterialId(materialId)
+                .stream()
+                .map(this::converterParaResponse)
+                .toList();
+    }
+
+    private int calcularQuantidadeAindaRetirada(
+            Long funcionarioId,
+            Long contratoId,
+            Long materialId
+    ) {
+        return movimentacaoRepository
+                .findByFuncionarioIdAndContratoIdAndMaterialId(
+                        funcionarioId,
+                        contratoId,
+                        materialId
+                )
+                .stream()
+                .mapToInt(movimentacao -> {
+                    if (movimentacao.getTipo() == TipoMovimentacao.RETIRADA) {
+                        return movimentacao.getQuantidade();
+                    }
+                    if (movimentacao.getTipo() == TipoMovimentacao.DEVOLUCAO) {
+                        return -movimentacao.getQuantidade();
+                    }
+                    return 0;
+                })
+                .sum();
     }
 }

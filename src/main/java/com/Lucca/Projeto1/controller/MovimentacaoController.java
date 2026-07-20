@@ -1,7 +1,6 @@
 package com.Lucca.Projeto1.controller;
 
 import com.Lucca.Projeto1.dto.MovimentacaoRequest;
-import com.Lucca.Projeto1.model.Movimentacao;
 import com.Lucca.Projeto1.service.MovimentacaoService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -9,8 +8,6 @@ import org.springframework.web.bind.annotation.*;
 import com.Lucca.Projeto1.dto.MovimentacaoResponse;
 import java.util.List;
 import jakarta.validation.Valid;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/movimentacoes")
@@ -41,7 +38,7 @@ public class MovimentacaoController {
     }
 
     @GetMapping("/funcionario/{funcionarioId}")
-    public ResponseEntity<List<Movimentacao>>
+    public ResponseEntity<List<MovimentacaoResponse>>
     listarPorFuncionario(
             @PathVariable Long funcionarioId
     ) {
@@ -52,7 +49,7 @@ public class MovimentacaoController {
     }
 
     @GetMapping("/contrato/{contratoId}")
-    public ResponseEntity<List<Movimentacao>>
+    public ResponseEntity<List<MovimentacaoResponse>>
     listarPorContrato(
             @PathVariable Long contratoId
     ) {
@@ -62,7 +59,7 @@ public class MovimentacaoController {
     }
 
     @GetMapping("/material/{materialId}")
-    public ResponseEntity<List<Movimentacao>>
+    public ResponseEntity<List<MovimentacaoResponse>>
     listarPorMaterial(
             @PathVariable Long materialId
     ) {

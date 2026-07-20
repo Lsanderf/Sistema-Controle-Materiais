@@ -1,21 +1,22 @@
 package com.Lucca.Projeto1.model;
 
-import java.util.List;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 
 @Entity
-@Table(name = "funcionarios")
+@Table(name = "tb_funcionarios")
 public class Funcionario {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(nullable = false)
     private String nome;
+
+    @Column(nullable = false)
     private String cpf;
+
+    @Column(nullable = false)
     private String cargo;
 
     public Funcionario(){}
