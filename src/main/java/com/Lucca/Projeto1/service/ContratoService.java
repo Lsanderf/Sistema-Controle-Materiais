@@ -1,7 +1,10 @@
 package com.Lucca.Projeto1.service;
 
+import com.Lucca.Projeto1.dto.ContratoRequest;
+import com.Lucca.Projeto1.dto.ContratoResponse;
 import com.Lucca.Projeto1.exception.RecursoNaoEncontradoException;
 import com.Lucca.Projeto1.exception.RegraNegocioException;
+import com.Lucca.Projeto1.mapper.ContratoMapper;
 import com.Lucca.Projeto1.model.Contrato;
 import com.Lucca.Projeto1.repository.ContratoRepository;
 
@@ -19,43 +22,58 @@ public class ContratoService {
         this.contratoRepository = contratoRepository;
     }
 
-    public List<Contrato> buscarTodos(){
-        return contratoRepository.findAll();
+    public List<ContratoResponse> buscarTodos(){
+        return contratoRepository.findAll()
+                .stream()
+                .map(ContratoMapper::paraResponse)
+                .toList();
     }
 
 
     //Busca pelo ID
-    public Contrato buscarPorId(Long id){
+    public ContratoResponse buscarPorId(Long id){
         return contratoRepository.
-                findById(id).orElseThrow(() ->
+                findById(id)
+                .map(ContratoMapper::paraResponse)
+                .orElseThrow(() ->
                         new RecursoNaoEncontradoException("Contrato nao encontrado!"));
     }
 
     //Busca pelo Nome
-    public Contrato buscaPeloNome(String nome){
+    public ContratoResponse buscaPeloNome(String nome){
         return contratoRepository.
-                findByNomeIgnoreCase(nome).orElseThrow(() ->
+                findByNomeIgnoreCase(nome)
+                .map(ContratoMapper::paraResponse)
+                .orElseThrow(() ->
                         new RecursoNaoEncontradoException("Contrato nao encontrado!"));
     }
 
     //Adicionar Contrato
-    public Contrato adicionaContrato(Contrato contrato){
+    public ContratoResponse adicionaContrato(ContratoRequest request){
+        Contrato contrato = ContratoMapper.paraEntidade(request);
+
         Optional<Contrato> novoContrato = contratoRepository.findByNomeIgnoreCase(contrato.getNome());
         if(novoContrato.isPresent()) throw new RegraNegocioException("Contrato ja existe no sistema!");
-        return contratoRepository.save(contrato);
+        Contrato contratoSalvo = contratoRepository.save(contrato);
+
+        return ContratoMapper.paraResponse(contratoSalvo);
     }
 
     //Atualizar contrato
 
-    public Contrato atualizarContrato(Long id, Contrato contrato){
+    public ContratoResponse atualizarContrato(Long id, ContratoRequest request){
         Contrato novoContrato = contratoRepository.
                 findById(id).orElseThrow(() ->
                         new RecursoNaoEncontradoException("Contrato nao encontrado!"));
-        novoContrato.setNome(contrato.getNome());
-        novoContrato.setDescricao(contrato.getDescricao());
-        novoContrato.setAtivo(contrato.getAtivo());
+        ContratoMapper.atualizarEntidade(
+                request,
+                novoContrato
+        );
 
-        return contratoRepository.save(novoContrato);
+        Contrato contratoAtualizado =
+                contratoRepository.save(novoContrato);
+
+        return ContratoMapper.paraResponse(contratoAtualizado);
     }
 
     //Deletar

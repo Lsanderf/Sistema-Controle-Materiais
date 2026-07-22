@@ -1,5 +1,6 @@
 package com.Lucca.Projeto1.controller;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,8 +13,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-import com.Lucca.Projeto1.model.Material;
+import com.Lucca.Projeto1.dto.MaterialRequest;
+import com.Lucca.Projeto1.dto.MaterialResponse;
 import com.Lucca.Projeto1.service.MaterialService;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/materiais")
@@ -25,20 +28,26 @@ public class MaterialController {
     }
 
     @PostMapping
-    public ResponseEntity<Material> adicionar(@RequestBody Material material) {
-        Material materialSalvo = materialService.adicionarMaterial(material);
-        return ResponseEntity.ok(materialSalvo);
+    public ResponseEntity<MaterialResponse> adicionar(
+            @Valid @RequestBody MaterialRequest request
+    ) {
+        MaterialResponse materialSalvo =
+                materialService.adicionarMaterial(request);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(materialSalvo);
     }
 
       // Listar todos os materiais
     @GetMapping
-    public ResponseEntity<List<Material>> listarTodos() {
+    public ResponseEntity<List<MaterialResponse>> listarTodos() {
         return ResponseEntity.ok(materialService.listarTodos());
     }
 
     // Buscar um material pelo ID
     @GetMapping("/{id}")
-    public ResponseEntity<Material> buscarPorId(
+    public ResponseEntity<MaterialResponse> buscarPorId(
             @PathVariable Long id
     ) {
         return ResponseEntity.ok(materialService.buscarPorId(id));
@@ -53,11 +62,15 @@ public class MaterialController {
     }
     
     @PutMapping("/{id}")
-    public ResponseEntity<Material> atualizarMaterial(@PathVariable Long id, @RequestBody Material novosDados) {
+    public ResponseEntity<MaterialResponse> atualizarMaterial(
+            @PathVariable Long id,
+            @Valid @RequestBody MaterialRequest novosDados
+    ) {
 
-    Material materialAtualizado = materialService.atualizarMaterial(id, novosDados);
+        MaterialResponse materialAtualizado =
+                materialService.atualizarMaterial(id, novosDados);
 
-    return ResponseEntity.ok(materialAtualizado);
+        return ResponseEntity.ok(materialAtualizado);
     }
 
 

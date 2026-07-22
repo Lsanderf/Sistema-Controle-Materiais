@@ -1,7 +1,10 @@
 package com.Lucca.Projeto1.controller;
 
-import com.Lucca.Projeto1.model.Contrato;
+import com.Lucca.Projeto1.dto.ContratoRequest;
+import com.Lucca.Projeto1.dto.ContratoResponse;
 import com.Lucca.Projeto1.service.ContratoService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,24 +20,35 @@ public class ContratoController {
     }
 
     @GetMapping
-    public List<Contrato> buscarTodos(){
+    public List<ContratoResponse> buscarTodos(){
         return contratoService.buscarTodos();
     }
 
     @GetMapping("/{id}")
-    public Contrato buscarPorId(@PathVariable Long id){
+    public ContratoResponse buscarPorId(@PathVariable Long id){
         return contratoService.buscarPorId(id);
     }
 
     @PostMapping
-    public ResponseEntity<Contrato> adicionar(@RequestBody Contrato contrato){
-       Contrato novoContrato = contratoService.adicionaContrato(contrato);
-       return ResponseEntity.ok(novoContrato);
+    public ResponseEntity<ContratoResponse> adicionar(
+            @Valid @RequestBody ContratoRequest request
+    ){
+       ContratoResponse novoContrato =
+               contratoService.adicionaContrato(request);
+
+       return ResponseEntity
+               .status(HttpStatus.CREATED)
+               .body(novoContrato);
     }
 
     @PutMapping ("/{id}")
-    public ResponseEntity<Contrato> atualizar(@PathVariable Long id, @RequestBody Contrato novosDados){
-        Contrato novoContrato = contratoService.atualizarContrato(id, novosDados);
+    public ResponseEntity<ContratoResponse> atualizar(
+            @PathVariable Long id,
+            @Valid @RequestBody ContratoRequest novosDados
+    ){
+        ContratoResponse novoContrato =
+                contratoService.atualizarContrato(id, novosDados);
+
         return ResponseEntity.ok(novoContrato);
     }
 

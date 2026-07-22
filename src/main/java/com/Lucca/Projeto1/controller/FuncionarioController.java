@@ -1,7 +1,11 @@
 package com.Lucca.Projeto1.controller;
 
+import com.Lucca.Projeto1.dto.FuncionarioRequest;
+import com.Lucca.Projeto1.dto.FuncionarioResponse;
 import com.Lucca.Projeto1.model.Funcionario;
 import com.Lucca.Projeto1.service.FuncionarioService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,25 +21,41 @@ public class FuncionarioController {
     }
 
     @GetMapping
-    public List<Funcionario> buscarTodos(){
-        return funcionarioService.buscarTodos();
+    public ResponseEntity<List<FuncionarioResponse>> listarTodos() {
+        return ResponseEntity.ok(
+                funcionarioService.listarTodos()
+        );
     }
 
     @GetMapping("/{id}")
-    public Funcionario buscarPeloId(@PathVariable long id){
-        return funcionarioService.buscarPorId(id);
+    public ResponseEntity<FuncionarioResponse> buscarPorId(
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(
+                funcionarioService.buscarPorId(id)
+        );
     }
 
     @PostMapping
-    public ResponseEntity<Funcionario> adicionarFuncionario(@RequestBody Funcionario funcionario){
-        Funcionario novoFuncionario = funcionarioService.adicionarFuncionario(funcionario);
-        return ResponseEntity.ok(novoFuncionario);
+    public ResponseEntity<FuncionarioResponse> cadastrar(
+            @Valid @RequestBody FuncionarioRequest request
+    ) {
+        FuncionarioResponse funcionario =
+                funcionarioService.adicionarFuncionario(request);
 
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(funcionario);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Funcionario> atualizarFuncionario(@PathVariable Long id, @RequestBody Funcionario novosDados){
-        Funcionario funcionarioAtualizado = funcionarioService.alterarFuncionario(id, novosDados);
+    public ResponseEntity<FuncionarioResponse> atualizarFuncionario(
+            @PathVariable Long id,
+            @Valid @RequestBody FuncionarioRequest novosDados
+    ) {
+        FuncionarioResponse funcionarioAtualizado =
+                funcionarioService.atualizarFuncionario(id, novosDados);
+
         return ResponseEntity.ok(funcionarioAtualizado);
     }
 

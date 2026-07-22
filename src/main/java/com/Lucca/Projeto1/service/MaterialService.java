@@ -4,7 +4,10 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.Lucca.Projeto1.dto.MaterialRequest;
+import com.Lucca.Projeto1.dto.MaterialResponse;
 import com.Lucca.Projeto1.exception.RecursoNaoEncontradoException;
+import com.Lucca.Projeto1.mapper.MaterialMapper;
 import com.Lucca.Projeto1.model.Material;
 import com.Lucca.Projeto1.repository.MaterialRepository;
 
@@ -17,7 +20,9 @@ public class MaterialService {
     }
 
 
-    public Material adicionarMaterial(Material materialRecebido){
+    public MaterialResponse adicionarMaterial(MaterialRequest request){
+        Material materialRecebido = MaterialMapper.paraEntidade(request);
+
         Material materialExistente = materialRepository.
                                     findByNomeIgnoreCase(materialRecebido.getNome()).
                                     orElse(null);
@@ -27,40 +32,53 @@ public class MaterialService {
 
             materialExistente.setQuantidadeEstoque(novaQuantidade);
 
-            return materialRepository.save(materialExistente);
+            Material materialSalvo = materialRepository.save(materialExistente);
+
+            return MaterialMapper.paraResponse(materialSalvo);
         }
-        return materialRepository.save(materialRecebido);
+        Material materialSalvo = materialRepository.save(materialRecebido);
+
+        return MaterialMapper.paraResponse(materialSalvo);
     }
 
-     public List<Material> listarTodos() {
-        return materialRepository.findAll();
+    public List<MaterialResponse> listarTodos() {
+        return materialRepository.findAll()
+                .stream()
+                .map(MaterialMapper::paraResponse)
+                .toList();
     }
 
-    public Material buscarPorId(Long id) {
+    public MaterialResponse buscarPorId(Long id) {
         return materialRepository.findById(id)
+                .map(MaterialMapper::paraResponse)
                 .orElseThrow(() ->
                         new RecursoNaoEncontradoException("Material nao encontrado")
                 );
     }
 
-    public Material atualizarMaterial(Long id, Material novosDados) {
+    public MaterialResponse atualizarMaterial(Long id, MaterialRequest request) {
 
-    Material materialExistente = materialRepository.findById(id)
-            .orElseThrow(() ->
-                    new RecursoNaoEncontradoException("Material nao encontrado")
-            );
+        Material materialExistente = materialRepository.findById(id)
+                .orElseThrow(() ->
+                        new RecursoNaoEncontradoException("Material nao encontrado")
+                );
 
-    materialExistente.setNome(novosDados.getNome());
-    materialExistente.setDescricao(novosDados.getDescricao());
-    materialExistente.setQuantidadeEstoque(
-            novosDados.getQuantidadeEstoque()
-    );
+        MaterialMapper.atualizarEntidade(
+                request,
+                materialExistente
+        );
 
-    return materialRepository.save(materialExistente);
-}
+        Material materialAtualizado =
+                materialRepository.save(materialExistente);
+
+        return MaterialMapper.paraResponse(materialAtualizado);
+    }
 
     public void excluir(Long id) {
-        Material material = buscarPorId(id);
+        Material material = materialRepository.findById(id)
+                .orElseThrow(() ->
+                        new RecursoNaoEncontradoException("Material nao encontrado")
+                );
         materialRepository.delete(material);
     }
 
