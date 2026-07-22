@@ -19,12 +19,16 @@ public class Funcionario {
     @Column(nullable = false)
     private String cargo;
 
+    @Column(nullable = false)
+    private Boolean ativo;
+
     public Funcionario(){}
 
     public Funcionario(String nome, String cpf, String cargo){
         this.nome = nome;
         this.cpf = cpf;
         this.cargo = cargo;
+        ativo = true;
     }
 
     public long getId() {
@@ -54,4 +58,13 @@ public class Funcionario {
     public void setCargo(String cargo) {
         this.cargo = cargo;
     }
+
+    public Boolean isAtivo() {
+        return ativo;
+    }
+
+    public void setAtivo(Boolean ativo) {
+        this.ativo = ativo;
+    }
+
 }
