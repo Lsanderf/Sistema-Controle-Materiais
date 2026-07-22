@@ -7,6 +7,7 @@ import com.Lucca.Projeto1.exception.RegraNegocioException;
 import com.Lucca.Projeto1.mapper.FuncionarioMapper;
 import com.Lucca.Projeto1.model.Funcionario;
 import com.Lucca.Projeto1.repository.FuncionarioRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -38,25 +39,24 @@ public class FuncionarioService {
         Funcionario funcionarioSalvo =
                 funcionarioRepository.save(funcionario);
 
-        return converterParaResponse(funcionarioSalvo);
+        return FuncionarioMapper.paraResponse(funcionarioSalvo);
     }
 
-    public void deletarFuncionario(Long id){
-        Funcionario funcionario = funcionarioRepository.
-                findById(id).orElseThrow(() ->
-                        new RecursoNaoEncontradoException("Funcionario nao encontrado"));
-        funcionarioRepository.delete(funcionario);
+
+    @Transactional
+    public FuncionarioResponse inativarFuncionario(Long id) {
+        Funcionario funcionario = funcionarioRepository
+                .findById(id)
+                .orElseThrow(() ->
+                        new RecursoNaoEncontradoException(
+                                "Funcionário não encontrado"
+                        )
+                );
+
+        funcionario.setAtivo(false);
+        return FuncionarioMapper.paraResponse(funcionario);
     }
 
-    private FuncionarioResponse converterParaResponse(
-            Funcionario funcionario
-    ) {
-        return new FuncionarioResponse(
-                funcionario.getId(),
-                funcionario.getNome(),
-                funcionario.getCargo()
-        );
-    }
 
     public FuncionarioResponse atualizarFuncionario(
             Long id,
@@ -91,6 +91,28 @@ public class FuncionarioService {
         return FuncionarioMapper.paraResponse(
                 funcionarioAtualizado
         );
+    }
+
+    public FuncionarioResponse ativarFuncionario(Long id) {
+        Funcionario funcionario = funcionarioRepository.findById(id)
+                .orElseThrow(() ->
+                        new RecursoNaoEncontradoException(
+                                "Funcionário não encontrado"
+                        )
+                );
+
+        if (funcionario.isAtivo()) {
+            throw new RegraNegocioException(
+                    "O funcionário já está ativo"
+            );
+        }
+
+        funcionario.setAtivo(true);
+
+        Funcionario funcionarioAtualizado =
+                funcionarioRepository.save(funcionario);
+
+        return FuncionarioMapper.paraResponse(funcionarioAtualizado);
     }
 
     public FuncionarioResponse buscarPorId(Long id) {
