@@ -1,7 +1,7 @@
 package com.Lucca.Projeto1.service;
 
-import com.Lucca.Projeto1.dto.ContratoRequest;
-import com.Lucca.Projeto1.dto.ContratoResponse;
+import com.Lucca.Projeto1.dto.Contrato.ContratoRequest;
+import com.Lucca.Projeto1.dto.Contrato.ContratoResponse;
 import com.Lucca.Projeto1.exception.RecursoNaoEncontradoException;
 import com.Lucca.Projeto1.exception.RegraNegocioException;
 import com.Lucca.Projeto1.mapper.ContratoMapper;

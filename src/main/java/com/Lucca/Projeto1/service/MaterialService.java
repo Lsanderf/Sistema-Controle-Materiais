@@ -2,10 +2,13 @@ package com.Lucca.Projeto1.service;
 
 import java.util.List;
 
+import com.Lucca.Projeto1.dto.AtualizacaoMaterial.MaterialAtualizacaoRequest;
+import com.Lucca.Projeto1.exception.RegraNegocioException;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
-import com.Lucca.Projeto1.dto.MaterialRequest;
-import com.Lucca.Projeto1.dto.MaterialResponse;
+import com.Lucca.Projeto1.dto.Material.MaterialRequest;
+import com.Lucca.Projeto1.dto.Material.MaterialResponse;
 import com.Lucca.Projeto1.exception.RecursoNaoEncontradoException;
 import com.Lucca.Projeto1.mapper.MaterialMapper;
 import com.Lucca.Projeto1.model.Material;
@@ -56,17 +59,23 @@ public class MaterialService {
                 );
     }
 
-    public MaterialResponse atualizarMaterial(Long id, MaterialRequest request) {
-
+    public MaterialResponse atualizarMaterial(
+            Long id,
+            MaterialAtualizacaoRequest request
+    ) {
         Material materialExistente = materialRepository.findById(id)
                 .orElseThrow(() ->
-                        new RecursoNaoEncontradoException("Material nao encontrado")
+                        new RecursoNaoEncontradoException(
+                                "Material com ID " + id + " não encontrado"
+                        )
                 );
+
 
         MaterialMapper.atualizarEntidade(
                 request,
                 materialExistente
         );
+
 
         Material materialAtualizado =
                 materialRepository.save(materialExistente);
@@ -74,12 +83,25 @@ public class MaterialService {
         return MaterialMapper.paraResponse(materialAtualizado);
     }
 
-    public void excluir(Long id) {
+    @Transactional
+    public void excluirMaterial(Long id) {
+
         Material material = materialRepository.findById(id)
                 .orElseThrow(() ->
-                        new RecursoNaoEncontradoException("Material nao encontrado")
+                        new RecursoNaoEncontradoException(
+                                "Material com ID " + id + " não encontrado"
+                        )
                 );
-        materialRepository.delete(material);
+
+        if (!material.isAtivo()) {
+            throw new RegraNegocioException(
+                    "O material já está inativo"
+            );
+        }
+
+        material.setAtivo(false);
+
+        materialRepository.save(material);
     }
 
 }

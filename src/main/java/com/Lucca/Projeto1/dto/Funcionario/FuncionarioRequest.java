@@ -1,4 +1,4 @@
-package com.Lucca.Projeto1.dto;
+package com.Lucca.Projeto1.dto.Funcionario;
 
 import jakarta.validation.constraints.NotBlank;
 

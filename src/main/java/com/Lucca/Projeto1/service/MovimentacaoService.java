@@ -1,7 +1,7 @@
 package com.Lucca.Projeto1.service;
 
-import com.Lucca.Projeto1.dto.MovimentacaoRequest;
-import com.Lucca.Projeto1.dto.MovimentacaoResponse;
+import com.Lucca.Projeto1.dto.Movimentacao.MovimentacaoRequest;
+import com.Lucca.Projeto1.dto.Movimentacao.MovimentacaoResponse;
 import com.Lucca.Projeto1.model.*;
 import com.Lucca.Projeto1.repository.ContratoRepository;
 import com.Lucca.Projeto1.repository.FuncionarioRepository;

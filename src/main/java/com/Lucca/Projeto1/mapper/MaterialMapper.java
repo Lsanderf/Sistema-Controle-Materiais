@@ -1,7 +1,8 @@
 package com.Lucca.Projeto1.mapper;
 
-import com.Lucca.Projeto1.dto.MaterialRequest;
-import com.Lucca.Projeto1.dto.MaterialResponse;
+import com.Lucca.Projeto1.dto.AtualizacaoMaterial.MaterialAtualizacaoRequest;
+import com.Lucca.Projeto1.dto.Material.MaterialRequest;
+import com.Lucca.Projeto1.dto.Material.MaterialResponse;
 import com.Lucca.Projeto1.model.Material;
 
 public class MaterialMapper {
@@ -32,12 +33,13 @@ public class MaterialMapper {
         );
     }
 
+
+
     public static void atualizarEntidade(
-            MaterialRequest request,
+            MaterialAtualizacaoRequest request,
             Material material
     ) {
         material.setNome(request.getNome());
         material.setDescricao(request.getDescricao());
-        material.setQuantidadeEstoque(request.getQuantidadeEstoque());
     }
 }

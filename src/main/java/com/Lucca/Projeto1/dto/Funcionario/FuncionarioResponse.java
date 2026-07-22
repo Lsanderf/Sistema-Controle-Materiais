@@ -1,4 +1,4 @@
-package com.Lucca.Projeto1.dto;
+package com.Lucca.Projeto1.dto.Funcionario;
 
 public class FuncionarioResponse {
     private Long id;

@@ -1,21 +1,21 @@
-package com.Lucca.Projeto1.dto;
+package com.Lucca.Projeto1.dto.Contrato;
 
-public class MaterialResponse {
+public class ContratoResponse {
     private Long id;
     private String nome;
     private String descricao;
-    private Integer quantidadeEstoque;
+    private Boolean ativo;
 
-    public MaterialResponse(
+    public ContratoResponse(
             Long id,
             String nome,
             String descricao,
-            Integer quantidadeEstoque
+            Boolean ativo
     ) {
         this.id = id;
         this.nome = nome;
         this.descricao = descricao;
-        this.quantidadeEstoque = quantidadeEstoque;
+        this.ativo = ativo;
     }
 
     public Long getId() {
@@ -30,7 +30,7 @@ public class MaterialResponse {
         return descricao;
     }
 
-    public Integer getQuantidadeEstoque() {
-        return quantidadeEstoque;
+    public Boolean getAtivo() {
+        return ativo;
     }
 }

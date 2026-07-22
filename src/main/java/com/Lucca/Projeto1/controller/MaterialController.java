@@ -1,5 +1,6 @@
 package com.Lucca.Projeto1.controller;
 
+import com.Lucca.Projeto1.dto.AtualizacaoMaterial.MaterialAtualizacaoRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -13,8 +14,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-import com.Lucca.Projeto1.dto.MaterialRequest;
-import com.Lucca.Projeto1.dto.MaterialResponse;
+import com.Lucca.Projeto1.dto.Material.MaterialRequest;
+import com.Lucca.Projeto1.dto.Material.MaterialResponse;
 import com.Lucca.Projeto1.service.MaterialService;
 import jakarta.validation.Valid;
 
@@ -56,19 +57,18 @@ public class MaterialController {
     // Excluir um material pelo ID
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> excluir(@PathVariable Long id) {
-        materialService.excluir(id);
+        materialService.excluirMaterial(id);
 
         return ResponseEntity.noContent().build();
     }
-    
+
     @PutMapping("/{id}")
     public ResponseEntity<MaterialResponse> atualizarMaterial(
             @PathVariable Long id,
-            @Valid @RequestBody MaterialRequest novosDados
+            @Valid @RequestBody MaterialAtualizacaoRequest request
     ) {
-
         MaterialResponse materialAtualizado =
-                materialService.atualizarMaterial(id, novosDados);
+                materialService.atualizarMaterial(id, request);
 
         return ResponseEntity.ok(materialAtualizado);
     }

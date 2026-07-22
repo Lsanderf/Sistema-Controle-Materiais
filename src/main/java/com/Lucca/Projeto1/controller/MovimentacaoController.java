@@ -1,11 +1,11 @@
 package com.Lucca.Projeto1.controller;
 
-import com.Lucca.Projeto1.dto.MovimentacaoRequest;
+import com.Lucca.Projeto1.dto.Movimentacao.MovimentacaoRequest;
 import com.Lucca.Projeto1.service.MovimentacaoService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.Lucca.Projeto1.dto.MovimentacaoResponse;
+import com.Lucca.Projeto1.dto.Movimentacao.MovimentacaoResponse;
 import java.util.List;
 import jakarta.validation.Valid;
 

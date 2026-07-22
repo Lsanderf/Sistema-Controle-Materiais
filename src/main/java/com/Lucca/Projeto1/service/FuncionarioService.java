@@ -1,7 +1,7 @@
 package com.Lucca.Projeto1.service;
 
-import com.Lucca.Projeto1.dto.FuncionarioRequest;
-import com.Lucca.Projeto1.dto.FuncionarioResponse;
+import com.Lucca.Projeto1.dto.Funcionario.FuncionarioRequest;
+import com.Lucca.Projeto1.dto.Funcionario.FuncionarioResponse;
 import com.Lucca.Projeto1.exception.RecursoNaoEncontradoException;
 import com.Lucca.Projeto1.exception.RegraNegocioException;
 import com.Lucca.Projeto1.mapper.FuncionarioMapper;
@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 @Service
 public class FuncionarioService {

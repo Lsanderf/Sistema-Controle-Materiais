@@ -1,8 +1,7 @@
 package com.Lucca.Projeto1.controller;
 
-import com.Lucca.Projeto1.dto.FuncionarioRequest;
-import com.Lucca.Projeto1.dto.FuncionarioResponse;
-import com.Lucca.Projeto1.model.Funcionario;
+import com.Lucca.Projeto1.dto.Funcionario.FuncionarioRequest;
+import com.Lucca.Projeto1.dto.Funcionario.FuncionarioResponse;
 import com.Lucca.Projeto1.service.FuncionarioService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;

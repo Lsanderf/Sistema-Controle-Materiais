@@ -20,6 +20,7 @@ public class Material {
     private Integer quantidadeEstoque;
 
 
+
     public Material(){}
 
     public Material(String nome, String descricao, Integer quantidadeEstoque){
@@ -39,6 +40,7 @@ public class Material {
     public void setNome(String nome) {
         this.nome = nome;
     }
+
 
     public String getDescricao() {
         return descricao;
