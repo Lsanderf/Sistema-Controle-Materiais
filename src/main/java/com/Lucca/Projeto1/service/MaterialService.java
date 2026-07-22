@@ -83,25 +83,5 @@ public class MaterialService {
         return MaterialMapper.paraResponse(materialAtualizado);
     }
 
-    @Transactional
-    public void excluirMaterial(Long id) {
-
-        Material material = materialRepository.findById(id)
-                .orElseThrow(() ->
-                        new RecursoNaoEncontradoException(
-                                "Material com ID " + id + " não encontrado"
-                        )
-                );
-
-        if (!material.isAtivo()) {
-            throw new RegraNegocioException(
-                    "O material já está inativo"
-            );
-        }
-
-        material.setAtivo(false);
-
-        materialRepository.save(material);
-    }
 
 }

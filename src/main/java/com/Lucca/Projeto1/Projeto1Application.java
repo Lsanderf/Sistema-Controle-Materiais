@@ -11,13 +11,3 @@ public class Projeto1Application {
 	}
 
 }
-
-
-/* FLYWAY
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-flyway</artifactId>
-		</dependency>
-
-
- */

@@ -47,6 +47,12 @@ public class MovimentacaoService {
                 findById(request.getFuncionarioId()).orElseThrow(() ->
                         new RecursoNaoEncontradoException(
                                 "Funcionario nao encontrado"));
+
+        if (!funcionario.isAtivo()) {
+            throw new RegraNegocioException(
+                    "Não é possível registrar movimentações para um funcionário inativo"
+            );
+        }
         Contrato contrato = contratoRepository
                 .findById(request.getContratoId())
                 .orElseThrow(() ->

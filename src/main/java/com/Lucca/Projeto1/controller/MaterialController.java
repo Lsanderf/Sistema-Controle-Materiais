@@ -54,13 +54,6 @@ public class MaterialController {
         return ResponseEntity.ok(materialService.buscarPorId(id));
     }
 
-    // Excluir um material pelo ID
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> excluir(@PathVariable Long id) {
-        materialService.excluirMaterial(id);
-
-        return ResponseEntity.noContent().build();
-    }
 
     @PutMapping("/{id}")
     public ResponseEntity<MaterialResponse> atualizarMaterial(

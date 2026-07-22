@@ -58,9 +58,22 @@ public class FuncionarioController {
         return ResponseEntity.ok(funcionarioAtualizado);
     }
 
-    @DeleteMapping("/{id}")
-    public void deletar(@PathVariable Long id){
-        funcionarioService.deletarFuncionario(id);
+    @PatchMapping("/{id}/desativar")
+    public ResponseEntity<FuncionarioResponse> inativarFuncionario(
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(
+                funcionarioService.inativarFuncionario(id)
+        );
+    }
+
+    @PatchMapping("/{id}/ativar")
+    public ResponseEntity<FuncionarioResponse> ativarFuncionario(
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(
+                funcionarioService.ativarFuncionario(id)
+        );
     }
 
 }
