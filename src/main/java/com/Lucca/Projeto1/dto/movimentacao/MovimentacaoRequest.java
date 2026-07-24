@@ -1,4 +1,4 @@
-package com.Lucca.Projeto1.dto.Movimentacao;
+package com.Lucca.Projeto1.dto.movimentacao;
 
 import com.Lucca.Projeto1.model.TipoMovimentacao;
 import jakarta.validation.constraints.NotNull;

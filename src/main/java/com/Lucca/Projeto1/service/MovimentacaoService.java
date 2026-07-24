@@ -1,7 +1,9 @@
 package com.Lucca.Projeto1.service;
 
-import com.Lucca.Projeto1.dto.Movimentacao.MovimentacaoRequest;
-import com.Lucca.Projeto1.dto.Movimentacao.MovimentacaoResponse;
+import com.Lucca.Projeto1.dto.movimentacao.EntradaEstoqueRequest;
+import com.Lucca.Projeto1.dto.movimentacao.MovimentacaoRequest;
+import com.Lucca.Projeto1.dto.movimentacao.MovimentacaoResponse;
+import com.Lucca.Projeto1.mapper.MovimentacaoMapper;
 import com.Lucca.Projeto1.model.*;
 import com.Lucca.Projeto1.repository.ContratoRepository;
 import com.Lucca.Projeto1.repository.FuncionarioRepository;
@@ -33,7 +35,50 @@ public class MovimentacaoService {
         this.funcionarioRepository = funcionarioRepository;
         this.contratoRepository = contratoRepository;
         this.materialRepository = materialRepository;
+
     }
+
+    @Transactional
+    public MovimentacaoResponse registrarEntrada(
+            EntradaEstoqueRequest request
+    ) {
+        Material material = materialRepository
+                .findById(request.getMaterialId())
+                .orElseThrow(() ->
+                        new RecursoNaoEncontradoException(
+                                "Material com ID "
+                                        + request.getMaterialId()
+                                        + " não encontrado"
+                        )
+                );
+
+        int novoEstoque =
+                material.getQuantidadeEstoque()
+                        + request.getQuantidade();
+
+        material.setQuantidadeEstoque(novoEstoque);
+
+        Movimentacao movimentacao = new Movimentacao();
+
+        movimentacao.setMaterial(material);
+        movimentacao.setQuantidade(request.getQuantidade());
+        movimentacao.setTipo(TipoMovimentacao.ENTRADA);
+        movimentacao.setDataMovimentacao(LocalDateTime.now());
+
+        // Uma entrada não pertence a funcionário ou contrato.
+        movimentacao.setFuncionario(null);
+        movimentacao.setContrato(null);
+
+        materialRepository.save(material);
+
+        Movimentacao movimentacaoSalva =
+                movimentacaoRepository.save(movimentacao);
+
+        return MovimentacaoMapper.paraResponse(
+                movimentacaoSalva
+        );
+    }
+
     @Transactional
     public MovimentacaoResponse registrarMovimentacao( MovimentacaoRequest request){
         if(request.getQuantidade() == null || request.getQuantidade() <= 0 ) {

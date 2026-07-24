@@ -1,4 +1,4 @@
-package com.Lucca.Projeto1.dto.Material;
+package com.Lucca.Projeto1.dto.material;
 
 public class MaterialResponse {
     private Long id;

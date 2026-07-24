@@ -1,7 +1,7 @@
 package com.Lucca.Projeto1.mapper;
 
-import com.Lucca.Projeto1.dto.Funcionario.FuncionarioRequest;
-import com.Lucca.Projeto1.dto.Funcionario.FuncionarioResponse;
+import com.Lucca.Projeto1.dto.funcionario.FuncionarioRequest;
+import com.Lucca.Projeto1.dto.funcionario.FuncionarioResponse;
 import com.Lucca.Projeto1.model.Funcionario;
 
 public class FuncionarioMapper {

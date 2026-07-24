@@ -1,9 +1,8 @@
 package com.Lucca.Projeto1.controller;
 
-import com.Lucca.Projeto1.dto.AtualizacaoMaterial.MaterialAtualizacaoRequest;
+import com.Lucca.Projeto1.dto.atualizacaoMaterial.MaterialAtualizacaoRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -14,8 +13,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-import com.Lucca.Projeto1.dto.Material.MaterialRequest;
-import com.Lucca.Projeto1.dto.Material.MaterialResponse;
+import com.Lucca.Projeto1.dto.material.MaterialRequest;
+import com.Lucca.Projeto1.dto.material.MaterialResponse;
 import com.Lucca.Projeto1.service.MaterialService;
 import jakarta.validation.Valid;
 

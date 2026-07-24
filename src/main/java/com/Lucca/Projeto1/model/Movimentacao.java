@@ -13,11 +13,11 @@ public class Movimentacao {
     private Long id;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "funcionario_id", nullable = false)
+    @JoinColumn(name = "funcionario_id", nullable = true)
     private Funcionario funcionario;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "contrato_id", nullable = false)
+    @JoinColumn(name = "contrato_id", nullable = true)
     private Contrato contrato;
 
     @ManyToOne(optional = false)

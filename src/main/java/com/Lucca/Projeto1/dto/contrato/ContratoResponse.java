@@ -1,4 +1,4 @@
-package com.Lucca.Projeto1.dto.Contrato;
+package com.Lucca.Projeto1.dto.contrato;
 
 public class ContratoResponse {
     private Long id;

@@ -1,11 +1,12 @@
 package com.Lucca.Projeto1.controller;
 
-import com.Lucca.Projeto1.dto.Movimentacao.MovimentacaoRequest;
+import com.Lucca.Projeto1.dto.movimentacao.EntradaEstoqueRequest;
+import com.Lucca.Projeto1.dto.movimentacao.MovimentacaoRequest;
 import com.Lucca.Projeto1.service.MovimentacaoService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.Lucca.Projeto1.dto.Movimentacao.MovimentacaoResponse;
+import com.Lucca.Projeto1.dto.movimentacao.MovimentacaoResponse;
 import java.util.List;
 import jakarta.validation.Valid;
 
@@ -66,6 +67,18 @@ public class MovimentacaoController {
         return ResponseEntity.ok(
                 movimentacaoService.listarPorMaterial(materialId)
         );
+    }
+
+    @PostMapping("/entrada")
+    public ResponseEntity<MovimentacaoResponse> registrarEntrada(
+            @Valid @RequestBody EntradaEstoqueRequest request
+    ) {
+        MovimentacaoResponse response =
+                movimentacaoService.registrarEntrada(request);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(response);
     }
 
 }

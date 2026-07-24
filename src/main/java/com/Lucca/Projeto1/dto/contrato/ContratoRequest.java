@@ -1,4 +1,4 @@
-package com.Lucca.Projeto1.dto.Contrato;
+package com.Lucca.Projeto1.dto.contrato;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

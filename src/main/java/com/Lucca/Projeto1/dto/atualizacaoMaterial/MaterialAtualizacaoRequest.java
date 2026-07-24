@@ -1,4 +1,4 @@
-package com.Lucca.Projeto1.dto.AtualizacaoMaterial;
+package com.Lucca.Projeto1.dto.atualizacaoMaterial;
 
 
 import jakarta.validation.constraints.NotBlank;

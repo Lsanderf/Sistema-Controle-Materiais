@@ -1,8 +1,8 @@
 package com.Lucca.Projeto1.mapper;
 
-import com.Lucca.Projeto1.dto.AtualizacaoMaterial.MaterialAtualizacaoRequest;
-import com.Lucca.Projeto1.dto.Material.MaterialRequest;
-import com.Lucca.Projeto1.dto.Material.MaterialResponse;
+import com.Lucca.Projeto1.dto.atualizacaoMaterial.MaterialAtualizacaoRequest;
+import com.Lucca.Projeto1.dto.material.MaterialRequest;
+import com.Lucca.Projeto1.dto.material.MaterialResponse;
 import com.Lucca.Projeto1.model.Material;
 
 public class MaterialMapper {

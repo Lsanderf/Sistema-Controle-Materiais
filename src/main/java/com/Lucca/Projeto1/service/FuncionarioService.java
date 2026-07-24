@@ -1,7 +1,7 @@
 package com.Lucca.Projeto1.service;
 
-import com.Lucca.Projeto1.dto.Funcionario.FuncionarioRequest;
-import com.Lucca.Projeto1.dto.Funcionario.FuncionarioResponse;
+import com.Lucca.Projeto1.dto.funcionario.FuncionarioRequest;
+import com.Lucca.Projeto1.dto.funcionario.FuncionarioResponse;
 import com.Lucca.Projeto1.exception.RecursoNaoEncontradoException;
 import com.Lucca.Projeto1.exception.RegraNegocioException;
 import com.Lucca.Projeto1.mapper.FuncionarioMapper;
