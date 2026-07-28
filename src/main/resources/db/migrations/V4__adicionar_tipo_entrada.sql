@@ -1,2 +1,0 @@
-ALTER TABLE tb_movimentacoes
-ALTER COLUMN tipo ENUM('ENTRADA', 'RETIRADA', 'DEVOLUCAO');

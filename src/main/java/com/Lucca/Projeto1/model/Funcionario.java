@@ -20,7 +20,7 @@ public class Funcionario {
     private String cargo;
 
     @Column(nullable = false)
-    private Boolean ativo;
+    private Boolean ativo = true;
 
     public Funcionario(){}
 
@@ -28,7 +28,6 @@ public class Funcionario {
         this.nome = nome;
         this.cpf = cpf;
         this.cargo = cargo;
-        ativo = true;
     }
 
     public long getId() {
