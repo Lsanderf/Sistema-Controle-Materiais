@@ -12,11 +12,13 @@ public class Movimentacao {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(optional = false)
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(name = "funcionario_id", nullable = true)
     private Funcionario funcionario;
 
-    @ManyToOne(optional = false)
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(name = "contrato_id", nullable = true)
     private Contrato contrato;
 

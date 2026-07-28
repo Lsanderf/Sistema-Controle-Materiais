@@ -158,14 +158,22 @@ public class MovimentacaoService {
         Movimentacao movimentacaoSalva =
                 movimentacaoRepository.save(movimentacao);
 
-        return converterParaResponse(movimentacaoSalva);
+        return MovimentacaoMapper.paraResponse(movimentacaoSalva);
     }
 
     public List<MovimentacaoResponse> listarTodas() {
         return movimentacaoRepository.findAll()
                 .stream()
-                .map(this::converterParaResponse)
+                .map(MovimentacaoMapper::paraResponse)
                 .toList();
+    }
+
+    public MovimentacaoResponse listarPorId(Long id){
+        return movimentacaoRepository.findById(id)
+                .map(MovimentacaoMapper::paraResponse)
+                .orElseThrow(() ->
+                        new RecursoNaoEncontradoException("Movimentacao nao encontrada")
+                        );
     }
 
     public List<MovimentacaoResponse> listarPorFuncionario(
@@ -174,7 +182,7 @@ public class MovimentacaoService {
         return movimentacaoRepository
                 .findByFuncionarioId(funcionarioId)
                 .stream()
-                .map(this::converterParaResponse)
+                .map(MovimentacaoMapper::paraResponse)
                 .toList();
     }
 
@@ -184,21 +192,10 @@ public class MovimentacaoService {
         return movimentacaoRepository
                 .findByContratoId(contratoId)
                 .stream()
-                .map(this::converterParaResponse)
+                .map(MovimentacaoMapper::paraResponse)
                 .toList();
     }
 
-    private MovimentacaoResponse converterParaResponse(Movimentacao movimentacao) {
-        return new MovimentacaoResponse(
-                movimentacao.getId(),
-                movimentacao.getFuncionario().getNome(),
-                movimentacao.getContrato().getNome(),
-                movimentacao.getMaterial().getNome(),
-                movimentacao.getQuantidade(),
-                movimentacao.getTipo(),
-                movimentacao.getDataMovimentacao()
-        );
-    }
 
     public List<MovimentacaoResponse> listarPorMaterial(
             Long materialId
@@ -206,7 +203,7 @@ public class MovimentacaoService {
         return movimentacaoRepository
                 .findByMaterialId(materialId)
                 .stream()
-                .map(this::converterParaResponse)
+                .map(MovimentacaoMapper::paraResponse)
                 .toList();
     }
 

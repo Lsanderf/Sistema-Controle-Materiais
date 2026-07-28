@@ -38,6 +38,12 @@ public class MovimentacaoController {
         );
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<MovimentacaoResponse> listarPorId(@PathVariable Long id){
+        return ResponseEntity.ok(
+                movimentacaoService.listarPorId(id));
+    }
+
     @GetMapping("/funcionario/{funcionarioId}")
     public ResponseEntity<List<MovimentacaoResponse>>
     listarPorFuncionario(
