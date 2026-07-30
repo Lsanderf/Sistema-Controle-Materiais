@@ -3,22 +3,28 @@ package com.Lucca.Projeto1.service;
 import com.Lucca.Projeto1.dto.movimentacao.EntradaEstoqueRequest;
 import com.Lucca.Projeto1.dto.movimentacao.MovimentacaoRequest;
 import com.Lucca.Projeto1.dto.movimentacao.MovimentacaoResponse;
+import com.Lucca.Projeto1.exception.RecursoNaoEncontradoException;
+import com.Lucca.Projeto1.exception.RegraNegocioException;
 import com.Lucca.Projeto1.mapper.MovimentacaoMapper;
-import com.Lucca.Projeto1.model.*;
+import com.Lucca.Projeto1.model.Contrato;
+import com.Lucca.Projeto1.model.Funcionario;
+import com.Lucca.Projeto1.model.Material;
+import com.Lucca.Projeto1.model.Movimentacao;
+import com.Lucca.Projeto1.model.TipoMovimentacao;
 import com.Lucca.Projeto1.repository.ContratoRepository;
 import com.Lucca.Projeto1.repository.FuncionarioRepository;
 import com.Lucca.Projeto1.repository.MaterialRepository;
 import com.Lucca.Projeto1.repository.MovimentacaoRepository;
-import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
-import com.Lucca.Projeto1.exception.RecursoNaoEncontradoException;
-import com.Lucca.Projeto1.exception.RegraNegocioException;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 public class MovimentacaoService {
+
+    private static final int LIMITE_QUANTIDADE_OPERACAO = 10000;
 
     private final MovimentacaoRepository movimentacaoRepository;
     private final ContratoRepository contratoRepository;
@@ -35,41 +41,29 @@ public class MovimentacaoService {
         this.funcionarioRepository = funcionarioRepository;
         this.contratoRepository = contratoRepository;
         this.materialRepository = materialRepository;
-
     }
 
     @Transactional
     public MovimentacaoResponse registrarEntrada(
             EntradaEstoqueRequest request
     ) {
-        Material material = materialRepository
-                .findById(request.getMaterialId())
-                .orElseThrow(() ->
-                        new RecursoNaoEncontradoException(
-                                "Material com ID "
-                                        + request.getMaterialId()
-                                        + " não encontrado"
-                        )
-                );
+        validarQuantidade(request.getQuantidade());
 
-        int novoEstoque =
-                material.getQuantidadeEstoque()
-                        + request.getQuantidade();
+        Material material = buscarMaterialComBloqueio(request.getMaterialId());
+        int novoEstoque = somarEstoque(
+                estoqueAtual(material),
+                request.getQuantidade()
+        );
 
         material.setQuantidadeEstoque(novoEstoque);
 
         Movimentacao movimentacao = new Movimentacao();
-
         movimentacao.setMaterial(material);
         movimentacao.setQuantidade(request.getQuantidade());
         movimentacao.setTipo(TipoMovimentacao.ENTRADA);
         movimentacao.setDataMovimentacao(LocalDateTime.now());
-
-        // Uma entrada não pertence a funcionário ou contrato.
         movimentacao.setFuncionario(null);
         movimentacao.setContrato(null);
-
-        materialRepository.save(material);
 
         Movimentacao movimentacaoSalva =
                 movimentacaoRepository.save(movimentacao);
@@ -80,55 +74,55 @@ public class MovimentacaoService {
     }
 
     @Transactional
-    public MovimentacaoResponse registrarMovimentacao( MovimentacaoRequest request){
-        if(request.getQuantidade() == null || request.getQuantidade() <= 0 ) {
-            throw new RegraNegocioException("A quantidade deve ser maior que 0");
-        }
-        if(request.getTipo() == null){
-            throw new RegraNegocioException("O tipo da movimentacao e obrigatorio!");
-        }
+    public MovimentacaoResponse registrarMovimentacao(
+            MovimentacaoRequest request
+    ) {
+        validarQuantidade(request.getQuantidade());
+        validarTipoMovimentacaoComum(request.getTipo());
 
-        Funcionario funcionario = funcionarioRepository.
-                findById(request.getFuncionarioId()).orElseThrow(() ->
+        Funcionario funcionario = funcionarioRepository
+                .findById(request.getFuncionarioId())
+                .orElseThrow(() ->
                         new RecursoNaoEncontradoException(
-                                "Funcionario nao encontrado"));
+                                "Funcionário não encontrado"
+                        )
+                );
 
         if (!funcionario.isAtivo()) {
             throw new RegraNegocioException(
                     "Não é possível registrar movimentações para um funcionário inativo"
             );
         }
+
         Contrato contrato = contratoRepository
                 .findById(request.getContratoId())
                 .orElseThrow(() ->
                         new RecursoNaoEncontradoException(
-                                "Contrato nao encontrado"));
-
-        Material material = materialRepository.findById(request.getMaterialId()).orElseThrow(() ->
-                new RecursoNaoEncontradoException(
-                        "Material nao encontrado!"));
+                                "Contrato não encontrado"
+                        )
+                );
 
         if (!Boolean.TRUE.equals(contrato.getAtivo())) {
             throw new RegraNegocioException(
-                    "Nao e possivel registrar movimentacoes em um contrato inativo"
+                    "Não é possível registrar movimentações em um contrato inativo"
             );
         }
 
-        int estoqueAtual = material.getQuantidadeEstoque() == null
-                ? 0
-                : material.getQuantidadeEstoque();
+        Material material = buscarMaterialComBloqueio(request.getMaterialId());
+        int estoqueAtual = estoqueAtual(material);
 
-        if(request.getTipo() == TipoMovimentacao.RETIRADA){
-            if(estoqueAtual < request.getQuantidade()){
+        if (request.getTipo() == TipoMovimentacao.RETIRADA) {
+            if (estoqueAtual < request.getQuantidade()) {
                 throw new RegraNegocioException(
                         "Quantidade insuficiente em estoque"
                 );
             }
+
             material.setQuantidadeEstoque(
-                    estoqueAtual
-                            - request.getQuantidade());
-        }else if(request.getTipo() == TipoMovimentacao.DEVOLUCAO){
-            int quantidadeAindaRetirada = calcularQuantidadeAindaRetirada(
+                    estoqueAtual - request.getQuantidade()
+            );
+        } else if (request.getTipo() == TipoMovimentacao.DEVOLUCAO) {
+            long quantidadeAindaRetirada = calcularQuantidadeAindaRetirada(
                     request.getFuncionarioId(),
                     request.getContratoId(),
                     request.getMaterialId()
@@ -136,18 +130,16 @@ public class MovimentacaoService {
 
             if (request.getQuantidade() > quantidadeAindaRetirada) {
                 throw new RegraNegocioException(
-                        "A devolucao nao pode ser maior que a quantidade ainda retirada"
+                        "A devolução não pode ser maior que a quantidade ainda retirada"
                 );
             }
 
             material.setQuantidadeEstoque(
-                    estoqueAtual
-                            + request.getQuantidade());
+                    somarEstoque(estoqueAtual, request.getQuantidade())
+            );
         }
-        materialRepository.save(material);
 
         Movimentacao movimentacao = new Movimentacao();
-
         movimentacao.setFuncionario(funcionario);
         movimentacao.setContrato(contrato);
         movimentacao.setMaterial(material);
@@ -168,12 +160,14 @@ public class MovimentacaoService {
                 .toList();
     }
 
-    public MovimentacaoResponse listarPorId(Long id){
+    public MovimentacaoResponse listarPorId(Long id) {
         return movimentacaoRepository.findById(id)
                 .map(MovimentacaoMapper::paraResponse)
                 .orElseThrow(() ->
-                        new RecursoNaoEncontradoException("Movimentacao nao encontrada")
-                        );
+                        new RecursoNaoEncontradoException(
+                                "Movimentação não encontrada"
+                        )
+                );
     }
 
     public List<MovimentacaoResponse> listarPorFuncionario(
@@ -196,7 +190,6 @@ public class MovimentacaoService {
                 .toList();
     }
 
-
     public List<MovimentacaoResponse> listarPorMaterial(
             Long materialId
     ) {
@@ -207,7 +200,75 @@ public class MovimentacaoService {
                 .toList();
     }
 
-    private int calcularQuantidadeAindaRetirada(
+    private Material buscarMaterialComBloqueio(Long materialId) {
+        return materialRepository.findByIdComBloqueio(materialId)
+                .orElseThrow(() ->
+                        new RecursoNaoEncontradoException(
+                                "Material não encontrado"
+                        )
+                );
+    }
+
+    private void validarQuantidade(Integer quantidade) {
+        if (quantidade == null || quantidade <= 0) {
+            throw new RegraNegocioException(
+                    "A quantidade deve ser maior que zero"
+            );
+        }
+
+        if (quantidade > LIMITE_QUANTIDADE_OPERACAO) {
+            throw new RegraNegocioException(
+                    "A quantidade máxima por operação é 10.000"
+            );
+        }
+    }
+
+    private void validarTipoMovimentacaoComum(TipoMovimentacao tipo) {
+        if (tipo == null) {
+            throw new RegraNegocioException(
+                    "O tipo da movimentação é obrigatório"
+            );
+        }
+
+        if (tipo == TipoMovimentacao.ENTRADA) {
+            throw new RegraNegocioException(
+                    "Entradas devem ser registradas pelo endpoint /movimentacoes/entrada"
+            );
+        }
+
+        if (tipo != TipoMovimentacao.RETIRADA
+                && tipo != TipoMovimentacao.DEVOLUCAO) {
+            throw new RegraNegocioException(
+                    "Tipo de movimentação inválido"
+            );
+        }
+    }
+
+    private int estoqueAtual(Material material) {
+        int estoqueAtual = material.getQuantidadeEstoque() == null
+                ? 0
+                : material.getQuantidadeEstoque();
+
+        if (estoqueAtual < 0) {
+            throw new RegraNegocioException(
+                    "O estoque do material não pode ser negativo"
+            );
+        }
+
+        return estoqueAtual;
+    }
+
+    private int somarEstoque(int estoqueAtual, int quantidade) {
+        try {
+            return Math.addExact(estoqueAtual, quantidade);
+        } catch (ArithmeticException exception) {
+            throw new RegraNegocioException(
+                    "A soma do estoque excede o limite suportado pelo sistema"
+            );
+        }
+    }
+
+    private long calcularQuantidadeAindaRetirada(
             Long funcionarioId,
             Long contratoId,
             Long materialId
@@ -219,7 +280,7 @@ public class MovimentacaoService {
                         materialId
                 )
                 .stream()
-                .mapToInt(movimentacao -> {
+                .mapToLong(movimentacao -> {
                     if (movimentacao.getTipo() == TipoMovimentacao.RETIRADA) {
                         return movimentacao.getQuantidade();
                     }

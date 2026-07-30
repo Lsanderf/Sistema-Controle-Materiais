@@ -1,0 +1,190 @@
+package com.Lucca.Projeto1.config;
+
+import com.Lucca.Projeto1.security.ApiSecurityErrorWriter;
+import com.Lucca.Projeto1.security.JwtProperties;
+import com.nimbusds.jose.jwk.source.ImmutableSecret;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
+import java.util.List;
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig {
+
+    private final Environment environment;
+    private final ApiSecurityErrorWriter errorWriter;
+
+    public SecurityConfig(
+            Environment environment,
+            ApiSecurityErrorWriter errorWriter
+    ) {
+        this.environment = environment;
+        this.errorWriter = errorWriter;
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            CorsConfigurationSource corsConfigurationSource,
+            JwtAuthenticationConverter jwtAuthenticationConverter
+    ) throws Exception {
+        http
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .formLogin(AbstractHttpConfigurer::disable)
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint((request, response, authException) ->
+                                errorWriter.write(
+                                        response,
+                                        HttpStatus.UNAUTHORIZED,
+                                        "Não autenticado ou token inválido"
+                                )
+                        )
+                        .accessDeniedHandler((request, response, accessDeniedException) ->
+                                errorWriter.write(
+                                        response,
+                                        HttpStatus.FORBIDDEN,
+                                        "Usuário autenticado sem permissão"
+                                )
+                        )
+                )
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/materiais", "/materiais/**")
+                        .hasAnyRole("ADMIN", "OPERADOR", "CONSULTA")
+                        .requestMatchers(HttpMethod.GET, "/funcionarios", "/funcionarios/**")
+                        .hasAnyRole("ADMIN", "OPERADOR", "CONSULTA")
+                        .requestMatchers(HttpMethod.GET, "/contratos", "/contratos/**")
+                        .hasAnyRole("ADMIN", "OPERADOR", "CONSULTA")
+                        .requestMatchers(HttpMethod.GET, "/movimentacoes", "/movimentacoes/**")
+                        .hasAnyRole("ADMIN", "OPERADOR", "CONSULTA")
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/movimentacoes",
+                                "/movimentacoes/entrada"
+                        )
+                        .hasAnyRole("ADMIN", "OPERADOR")
+                        .requestMatchers("/materiais", "/materiais/**")
+                        .hasRole("ADMIN")
+                        .requestMatchers("/funcionarios", "/funcionarios/**")
+                        .hasRole("ADMIN")
+                        .requestMatchers("/contratos", "/contratos/**")
+                        .hasRole("ADMIN")
+                        .requestMatchers("/usuarios", "/usuarios/**")
+                        .hasRole("ADMIN")
+                        .anyRequest().authenticated()
+                )
+                .oauth2ResourceServer(resourceServer -> resourceServer
+                        .jwt(jwt -> jwt
+                                .jwtAuthenticationConverter(jwtAuthenticationConverter)
+                        )
+                );
+
+        return http.build();
+    }
+
+    @Bean
+    public JwtAuthenticationConverter jwtAuthenticationConverter() {
+        JwtGrantedAuthoritiesConverter authoritiesConverter =
+                new JwtGrantedAuthoritiesConverter();
+        authoritiesConverter.setAuthoritiesClaimName("role");
+        authoritiesConverter.setAuthorityPrefix("ROLE_");
+
+        JwtAuthenticationConverter authenticationConverter =
+                new JwtAuthenticationConverter();
+        authenticationConverter.setJwtGrantedAuthoritiesConverter(
+                authoritiesConverter
+        );
+
+        return authenticationConverter;
+    }
+
+    @Bean
+    public JwtEncoder jwtEncoder(JwtProperties jwtProperties) {
+        return new NimbusJwtEncoder(
+                new ImmutableSecret<>(jwtProperties.secretKey())
+        );
+    }
+
+    @Bean
+    public JwtDecoder jwtDecoder(JwtProperties jwtProperties) {
+        return NimbusJwtDecoder
+                .withSecretKey(jwtProperties.secretKey())
+                .macAlgorithm(MacAlgorithm.HS256)
+                .build();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(allowedOrigins());
+        configuration.setAllowedMethods(
+                List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+        );
+        configuration.setAllowedHeaders(
+                List.of("Authorization", "Content-Type")
+        );
+        configuration.setAllowCredentials(false);
+
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+
+        return source;
+    }
+
+    private List<String> allowedOrigins() {
+        String origins = environment.getProperty("APP_CORS_ALLOWED_ORIGINS");
+
+        if (origins == null || origins.isBlank()) {
+            throw new IllegalStateException(
+                    "A variável de ambiente APP_CORS_ALLOWED_ORIGINS deve ser configurada"
+            );
+        }
+
+        List<String> allowedOrigins = Arrays.stream(origins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isBlank())
+                .toList();
+
+        if (allowedOrigins.isEmpty() || allowedOrigins.contains("*")) {
+            throw new IllegalStateException(
+                    "APP_CORS_ALLOWED_ORIGINS deve listar origens explícitas"
+            );
+        }
+
+        return allowedOrigins;
+    }
+}

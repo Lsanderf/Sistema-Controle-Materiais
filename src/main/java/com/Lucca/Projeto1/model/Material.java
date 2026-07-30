@@ -10,10 +10,10 @@ public class Material {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 150)
     private String nome;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 500)
     private String descricao;
 
     @Column(nullable = false)
@@ -29,7 +29,7 @@ public class Material {
         this.quantidadeEstoque = quantidadeEstoque;
     }
 
-    public long getId() {
+    public Long getId() {
         return id;
     }
 

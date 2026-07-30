@@ -1,28 +1,31 @@
 package com.Lucca.Projeto1.dto.material;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 
 public class MaterialRequest {
-    @NotBlank(message = "O nome e obrigatorio")
+
+    @NotBlank(message = "O nome é obrigatório")
+    @Size(min = 2, max = 100, message = "O nome deve ter entre 2 e 100 caracteres")
     private String nome;
 
+    @NotBlank(message = "A descrição é obrigatória")
+    @Size(min = 2, max = 500, message = "A descrição deve ter entre 2 e 500 caracteres")
     private String descricao;
-
-    @NotNull(message = "A quantidade em estoque e obrigatoria")
-    @PositiveOrZero(message = "A quantidade em estoque nao pode ser negativa")
-    private Integer quantidadeEstoque;
 
     public String getNome() {
         return nome;
+    }
+
+    public void setNome(String nome) {
+        this.nome = nome;
     }
 
     public String getDescricao() {
         return descricao;
     }
 
-    public Integer getQuantidadeEstoque() {
-        return quantidadeEstoque;
+    public void setDescricao(String descricao) {
+        this.descricao = descricao;
     }
 }

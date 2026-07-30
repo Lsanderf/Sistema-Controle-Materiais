@@ -10,13 +10,13 @@ public class Funcionario {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 150)
     private String nome;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 20)
     private String cpf;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String cargo;
 
     @Column(nullable = false)
@@ -30,7 +30,7 @@ public class Funcionario {
         this.cargo = cargo;
     }
 
-    public long getId() {
+    public Long getId() {
         return id;
     }
 

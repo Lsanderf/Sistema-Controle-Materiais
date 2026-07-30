@@ -17,7 +17,7 @@ public class MaterialMapper {
 
         material.setNome(request.getNome());
         material.setDescricao(request.getDescricao());
-        material.setQuantidadeEstoque(request.getQuantidadeEstoque());
+        material.setQuantidadeEstoque(0);
 
         return material;
     }

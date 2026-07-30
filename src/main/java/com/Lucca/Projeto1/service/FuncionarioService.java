@@ -7,8 +7,8 @@ import com.Lucca.Projeto1.exception.RegraNegocioException;
 import com.Lucca.Projeto1.mapper.FuncionarioMapper;
 import com.Lucca.Projeto1.model.Funcionario;
 import com.Lucca.Projeto1.repository.FuncionarioRepository;
-import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Objects;
@@ -18,30 +18,32 @@ public class FuncionarioService {
 
     private final FuncionarioRepository funcionarioRepository;
 
-    FuncionarioService(FuncionarioRepository funcionarioRepository){
+    public FuncionarioService(FuncionarioRepository funcionarioRepository) {
         this.funcionarioRepository = funcionarioRepository;
     }
 
+    @Transactional
     public FuncionarioResponse adicionarFuncionario(
             FuncionarioRequest request
     ) {
-        if (funcionarioRepository
-                .findByCpf(request.getCpf())
-                .isPresent()) {
+        String cpfNormalizado = normalizarCpf(request.getCpf());
 
+        if (funcionarioRepository
+                .findByCpfNormalizado(cpfNormalizado)
+                .isPresent()) {
             throw new RegraNegocioException(
                     "Já existe um funcionário com esse CPF"
             );
         }
 
         Funcionario funcionario = FuncionarioMapper.paraEntidade(request);
+        funcionario.setCpf(cpfNormalizado);
 
         Funcionario funcionarioSalvo =
                 funcionarioRepository.save(funcionario);
 
         return FuncionarioMapper.paraResponse(funcionarioSalvo);
     }
-
 
     @Transactional
     public FuncionarioResponse inativarFuncionario(Long id) {
@@ -57,11 +59,13 @@ public class FuncionarioService {
         return FuncionarioMapper.paraResponse(funcionario);
     }
 
-
+    @Transactional
     public FuncionarioResponse atualizarFuncionario(
             Long id,
             FuncionarioRequest request
     ) {
+        String cpfNormalizado = normalizarCpf(request.getCpf());
+
         Funcionario funcionario = funcionarioRepository.findById(id)
                 .orElseThrow(() ->
                         new RecursoNaoEncontradoException(
@@ -69,7 +73,8 @@ public class FuncionarioService {
                                         + " não encontrado"
                         )
                 );
-        funcionarioRepository.findByCpf(request.getCpf())
+
+        funcionarioRepository.findByCpfNormalizado(cpfNormalizado)
                 .filter(outroFuncionario ->
                         !Objects.equals(outroFuncionario.getId(), id)
                 )
@@ -83,7 +88,7 @@ public class FuncionarioService {
                 request,
                 funcionario
         );
-
+        funcionario.setCpf(cpfNormalizado);
 
         Funcionario funcionarioAtualizado =
                 funcionarioRepository.save(funcionario);
@@ -93,6 +98,7 @@ public class FuncionarioService {
         );
     }
 
+    @Transactional
     public FuncionarioResponse ativarFuncionario(Long id) {
         Funcionario funcionario = funcionarioRepository.findById(id)
                 .orElseThrow(() ->
@@ -133,8 +139,14 @@ public class FuncionarioService {
                 .toList();
     }
 
+    private String normalizarCpf(String cpf) {
+        if (cpf == null) {
+            return null;
+        }
 
-
-
-
+        return cpf
+                .replace(".", "")
+                .replace("-", "")
+                .replace(" ", "");
+    }
 }

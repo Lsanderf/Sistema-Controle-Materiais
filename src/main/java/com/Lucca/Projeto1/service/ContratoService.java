@@ -9,6 +9,7 @@ import com.Lucca.Projeto1.model.Contrato;
 import com.Lucca.Projeto1.repository.ContratoRepository;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -49,11 +50,12 @@ public class ContratoService {
     }
 
     //Adicionar Contrato
+    @Transactional
     public ContratoResponse adicionaContrato(ContratoRequest request){
         Contrato contrato = ContratoMapper.paraEntidade(request);
 
         Optional<Contrato> novoContrato = contratoRepository.findByNomeIgnoreCase(contrato.getNome());
-        if(novoContrato.isPresent()) throw new RegraNegocioException("Contrato ja existe no sistema!");
+        if(novoContrato.isPresent()) throw new RegraNegocioException("Contrato já existe no sistema");
         Contrato contratoSalvo = contratoRepository.save(contrato);
 
         return ContratoMapper.paraResponse(contratoSalvo);
@@ -61,10 +63,22 @@ public class ContratoService {
 
     //Atualizar contrato
 
+    @Transactional
     public ContratoResponse atualizarContrato(Long id, ContratoRequest request){
         Contrato novoContrato = contratoRepository.
                 findById(id).orElseThrow(() ->
                         new RecursoNaoEncontradoException("Contrato nao encontrado!"));
+
+        contratoRepository.findByNomeIgnoreCase(request.getNome())
+                .filter(outroContrato ->
+                        !outroContrato.getId().equals(novoContrato.getId())
+                )
+                .ifPresent(outroContrato -> {
+                    throw new RegraNegocioException(
+                            "Já existe outro contrato com esse nome"
+                    );
+                });
+
         ContratoMapper.atualizarEntidade(
                 request,
                 novoContrato

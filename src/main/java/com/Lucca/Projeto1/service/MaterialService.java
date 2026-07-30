@@ -8,9 +8,11 @@ import org.springframework.stereotype.Service;
 import com.Lucca.Projeto1.dto.material.MaterialRequest;
 import com.Lucca.Projeto1.dto.material.MaterialResponse;
 import com.Lucca.Projeto1.exception.RecursoNaoEncontradoException;
+import com.Lucca.Projeto1.exception.RegraNegocioException;
 import com.Lucca.Projeto1.mapper.MaterialMapper;
 import com.Lucca.Projeto1.model.Material;
 import com.Lucca.Projeto1.repository.MaterialRepository;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class MaterialService {
@@ -21,23 +23,17 @@ public class MaterialService {
     }
 
 
+    @Transactional
     public MaterialResponse adicionarMaterial(MaterialRequest request){
-        Material materialRecebido = MaterialMapper.paraEntidade(request);
+        materialRepository.findByNomeIgnoreCase(request.getNome())
+                .ifPresent(material -> {
+                    throw new RegraNegocioException(
+                            "Já existe um material com esse nome"
+                    );
+                });
 
-        Material materialExistente = materialRepository.
-                                    findByNomeIgnoreCase(materialRecebido.getNome()).
-                                    orElse(null);
-
-        if(materialExistente != null){
-            int novaQuantidade = materialExistente.getQuantidadeEstoque() + materialRecebido.getQuantidadeEstoque();
-
-            materialExistente.setQuantidadeEstoque(novaQuantidade);
-
-            Material materialSalvo = materialRepository.save(materialExistente);
-
-            return MaterialMapper.paraResponse(materialSalvo);
-        }
-        Material materialSalvo = materialRepository.save(materialRecebido);
+        Material material = MaterialMapper.paraEntidade(request);
+        Material materialSalvo = materialRepository.save(material);
 
         return MaterialMapper.paraResponse(materialSalvo);
     }
@@ -68,6 +64,15 @@ public class MaterialService {
                         )
                 );
 
+        materialRepository.findByNomeIgnoreCase(request.getNome())
+                .filter(outroMaterial ->
+                        !outroMaterial.getId().equals(materialExistente.getId())
+                )
+                .ifPresent(outroMaterial -> {
+                    throw new RegraNegocioException(
+                            "Já existe outro material com esse nome"
+                    );
+                });
 
         MaterialMapper.atualizarEntidade(
                 request,
