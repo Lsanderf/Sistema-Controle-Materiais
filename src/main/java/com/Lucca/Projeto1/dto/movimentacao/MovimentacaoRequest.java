@@ -1,5 +1,6 @@
 package com.Lucca.Projeto1.dto.movimentacao;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.Lucca.Projeto1.model.TipoMovimentacao;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotNull;
@@ -65,5 +66,10 @@ public class MovimentacaoRequest {
 
     public void setTipo(TipoMovimentacao tipo) {
         this.tipo = tipo;
+    }
+
+    @JsonAnySetter
+    public void rejeitarCampoDesconhecido(String campo, Object valor) {
+        throw new IllegalArgumentException("Campo não permitido: " + campo);
     }
 }

@@ -2,6 +2,8 @@ package com.Lucca.Projeto1.config;
 
 import com.Lucca.Projeto1.security.ApiSecurityErrorWriter;
 import com.Lucca.Projeto1.security.JwtProperties;
+import com.Lucca.Projeto1.security.UsuarioAtivoFilter;
+import com.Lucca.Projeto1.repository.UsuarioRepository;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,6 +23,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -35,13 +38,16 @@ public class SecurityConfig {
 
     private final Environment environment;
     private final ApiSecurityErrorWriter errorWriter;
+    private final UsuarioRepository usuarioRepository;
 
     public SecurityConfig(
             Environment environment,
-            ApiSecurityErrorWriter errorWriter
+            ApiSecurityErrorWriter errorWriter,
+            UsuarioRepository usuarioRepository
     ) {
         this.environment = environment;
         this.errorWriter = errorWriter;
+        this.usuarioRepository = usuarioRepository;
     }
 
     @Bean
@@ -105,6 +111,13 @@ public class SecurityConfig {
                         .jwt(jwt -> jwt
                                 .jwtAuthenticationConverter(jwtAuthenticationConverter)
                         )
+                )
+                .addFilterAfter(
+                        new UsuarioAtivoFilter(
+                                usuarioRepository,
+                                errorWriter
+                        ),
+                        BearerTokenAuthenticationFilter.class
                 );
 
         return http.build();

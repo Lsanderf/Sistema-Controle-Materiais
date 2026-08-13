@@ -3,8 +3,11 @@ package com.Lucca.Projeto1;
 import com.Lucca.Projeto1.model.Contrato;
 import com.Lucca.Projeto1.model.Funcionario;
 import com.Lucca.Projeto1.model.Material;
+import com.Lucca.Projeto1.model.Movimentacao;
 import com.Lucca.Projeto1.model.Role;
 import com.Lucca.Projeto1.model.TipoMovimentacao;
+import com.Lucca.Projeto1.model.Usuario;
+import com.Lucca.Projeto1.exception.RegraNegocioException;
 import com.Lucca.Projeto1.repository.ContratoRepository;
 import com.Lucca.Projeto1.repository.FuncionarioRepository;
 import com.Lucca.Projeto1.repository.MaterialRepository;
@@ -31,13 +34,17 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -188,7 +195,9 @@ class ApiIntegrationTests {
                                 "quantidade", 7
                         ))))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.tipo").value("ENTRADA"));
+                .andExpect(jsonPath("$.tipo").value("ENTRADA"))
+                .andExpect(jsonPath("$.usuarioUsername").value("operador"))
+                .andExpect(jsonPath("$.usuarioId").isNumber());
 
         assertEquals(
                 7,
@@ -196,6 +205,60 @@ class ApiIntegrationTests {
                         .getQuantidadeEstoque()
         );
         assertEquals(1, movimentacaoRepository.findAll().size());
+    }
+
+    @Test
+    void usuarioResponsavelNaoPodeSerEscolhidoPeloRequest() throws Exception {
+        Material material = criarMaterial("Capacete", 0);
+        Usuario admin = usuarioRepository
+                .findByUsernameIgnoreCase("admin")
+                .orElseThrow();
+
+        mockMvc.perform(post("/movimentacoes/entrada")
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                bearer(operadorToken)
+                        )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "materialId", material.getId(),
+                                "quantidade", 7,
+                                "usuarioId", admin.getId()
+                        ))))
+                .andExpect(status().isBadRequest());
+
+        assertTrue(movimentacaoRepository.findAll().isEmpty());
+    }
+
+    @Test
+    void movimentacaoAntigaSemUsuarioContinuaSendoRetornada() throws Exception {
+        Material material = criarMaterial("Capacete", 10);
+        Movimentacao antiga = new Movimentacao();
+        antiga.setMaterial(material);
+        antiga.setQuantidade(2);
+        antiga.setTipo(TipoMovimentacao.ENTRADA);
+        antiga.setDataMovimentacao(LocalDateTime.now());
+        antiga.setRegistradoPor(null);
+        antiga = movimentacaoRepository.save(antiga);
+
+        MvcResult result = mockMvc.perform(
+                        get("/movimentacoes/{id}", antiga.getId())
+                                .header(
+                                        HttpHeaders.AUTHORIZATION,
+                                        bearer(adminToken)
+                                )
+                )
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode response = jsonResponse(result);
+        assertTrue(response.get("usuarioId").isNull());
+        assertTrue(response.get("usuarioUsername").isNull());
+        assertNull(
+                movimentacaoRepository.findById(antiga.getId())
+                        .orElseThrow()
+                        .getRegistradoPor()
+        );
     }
 
     @Test
@@ -207,7 +270,10 @@ class ApiIntegrationTests {
                 contexto,
                 TipoMovimentacao.RETIRADA,
                 4
-        ).andExpect(status().isCreated());
+        )
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.usuarioUsername").value("operador"))
+                .andExpect(jsonPath("$.usuarioId").isNumber());
 
         assertEquals(
                 6,
@@ -252,7 +318,10 @@ class ApiIntegrationTests {
                 contexto,
                 TipoMovimentacao.DEVOLUCAO,
                 4
-        ).andExpect(status().isCreated());
+        )
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.usuarioUsername").value("operador"))
+                .andExpect(jsonPath("$.usuarioId").isNumber());
 
         assertEquals(
                 8,
@@ -496,6 +565,200 @@ class ApiIntegrationTests {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.username").value("novoOperador"))
                 .andExpect(jsonPath("$.role").value("OPERADOR"));
+    }
+
+    @Test
+    void adminConsegueListarUsuariosSemExporCredenciais() throws Exception {
+        mockMvc.perform(get("/usuarios")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(3))
+                .andExpect(jsonPath("$[0].id").isNumber())
+                .andExpect(jsonPath("$[0].username").isString())
+                .andExpect(jsonPath("$[0].role").isString())
+                .andExpect(jsonPath("$[0].ativo").isBoolean())
+                .andExpect(jsonPath("$[0].senha").doesNotExist())
+                .andExpect(jsonPath("$[0].password").doesNotExist());
+    }
+
+    @Test
+    void operadorEConsultaNaoPodemListarUsuarios() throws Exception {
+        mockMvc.perform(get("/usuarios")
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                bearer(operadorToken)
+                        ))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/usuarios")
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                bearer(consultaToken)
+                        ))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void adminConsegueConsultarUsuarioPorId() throws Exception {
+        Usuario operador = usuarioRepository
+                .findByUsernameIgnoreCase("operador")
+                .orElseThrow();
+
+        mockMvc.perform(get("/usuarios/{id}", operador.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(operador.getId()))
+                .andExpect(jsonPath("$.username").value("operador"))
+                .andExpect(jsonPath("$.role").value("OPERADOR"))
+                .andExpect(jsonPath("$.ativo").value(true))
+                .andExpect(jsonPath("$.senha").doesNotExist());
+    }
+
+    @Test
+    void usuarioPodeSerEditadoSemTrocarSenha() throws Exception {
+        Usuario operador = usuarioRepository
+                .findByUsernameIgnoreCase("operador")
+                .orElseThrow();
+        String hashOriginal = operador.getSenha();
+
+        mockMvc.perform(put("/usuarios/{id}", operador.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "username", "operador_estoque",
+                                "role", "OPERADOR"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value("operador_estoque"))
+                .andExpect(jsonPath("$.senha").doesNotExist());
+
+        Usuario atualizado = usuarioRepository
+                .findByUsernameIgnoreCase("operador_estoque")
+                .orElseThrow();
+        assertEquals(hashOriginal, atualizado.getSenha());
+    }
+
+    @Test
+    void usuarioPodeSerEditadoComNovaSenha() throws Exception {
+        Usuario operador = usuarioRepository
+                .findByUsernameIgnoreCase("operador")
+                .orElseThrow();
+
+        mockMvc.perform(put("/usuarios/{id}", operador.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "username", "operador",
+                                "role", "OPERADOR",
+                                "novaSenha", "senhaNova123"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.senha").doesNotExist());
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "username", "operador",
+                                "password", SENHA_OPERADOR
+                        ))))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "username", "operador",
+                                "password", "senhaNova123"
+                        ))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void usernameDuplicadoERejeitadoNaEdicao() throws Exception {
+        Usuario operador = usuarioRepository
+                .findByUsernameIgnoreCase("operador")
+                .orElseThrow();
+
+        mockMvc.perform(put("/usuarios/{id}", operador.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "username", "consulta",
+                                "role", "OPERADOR"
+                        ))))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void usuarioPodeSerDesativadoEAtivado() throws Exception {
+        Usuario operador = usuarioRepository
+                .findByUsernameIgnoreCase("operador")
+                .orElseThrow();
+
+        mockMvc.perform(patch("/usuarios/{id}/desativar", operador.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ativo").value(false));
+
+        mockMvc.perform(patch("/usuarios/{id}/ativar", operador.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ativo").value(true));
+    }
+
+    @Test
+    void administradorNaoPodeDesativarPropriaConta() throws Exception {
+        Usuario admin = usuarioRepository
+                .findByUsernameIgnoreCase("admin")
+                .orElseThrow();
+
+        mockMvc.perform(patch("/usuarios/{id}/desativar", admin.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.erro").value(
+                        "Você não pode desativar sua própria conta"
+                ));
+    }
+
+    @Test
+    void ultimoAdminAtivoNaoPodeSerDesativadoNemPerderRole() throws Exception {
+        Usuario admin = usuarioRepository
+                .findByUsernameIgnoreCase("admin")
+                .orElseThrow();
+
+        assertThrows(
+                RegraNegocioException.class,
+                () -> usuarioService.desativar(admin.getId(), "outro-admin")
+        );
+
+        mockMvc.perform(put("/usuarios/{id}", admin.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "username", "admin",
+                                "role", "OPERADOR"
+                        ))))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void tokenAntigoDeUsuarioDesativadoDeixaDeFuncionar() throws Exception {
+        Usuario operador = usuarioRepository
+                .findByUsernameIgnoreCase("operador")
+                .orElseThrow();
+
+        mockMvc.perform(patch("/usuarios/{id}/desativar", operador.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/materiais")
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                bearer(operadorToken)
+                        ))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.erro").value(
+                        "Usuário inativo ou não encontrado. Entre novamente"
+                ));
     }
 
     @Test

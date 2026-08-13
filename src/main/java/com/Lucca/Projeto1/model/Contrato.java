@@ -2,6 +2,8 @@ package com.Lucca.Projeto1.model;
 
 import jakarta.persistence.*;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "tb_contratos")
 public class Contrato {
@@ -17,6 +19,9 @@ public class Contrato {
 
     @Column(nullable = false)
     private Boolean ativo;
+
+    @Column(name = "data_inativacao")
+    private LocalDateTime dataInativacao;
 
     public Contrato(){}
 
@@ -52,5 +57,13 @@ public class Contrato {
 
     public void setAtivo(Boolean ativo) {
         this.ativo = ativo;
+    }
+
+    public LocalDateTime getDataInativacao() {
+        return dataInativacao;
+    }
+
+    public void setDataInativacao(LocalDateTime dataInativacao) {
+        this.dataInativacao = dataInativacao;
     }
 }

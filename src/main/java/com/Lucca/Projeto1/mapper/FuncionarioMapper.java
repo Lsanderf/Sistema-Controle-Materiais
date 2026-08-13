@@ -28,7 +28,8 @@ public class FuncionarioMapper {
                 funcionario.getId(),
                 funcionario.getNome(),
                 funcionario.getCargo(),
-                funcionario.isAtivo()
+                funcionario.isAtivo(),
+                funcionario.getDataInativacao()
         );
     }
 

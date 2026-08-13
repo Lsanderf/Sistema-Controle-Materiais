@@ -10,6 +10,7 @@ import com.Lucca.Projeto1.repository.FuncionarioRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
@@ -55,7 +56,10 @@ public class FuncionarioService {
                         )
                 );
 
-        funcionario.setAtivo(false);
+        if (funcionario.isAtivo()) {
+            funcionario.setAtivo(false);
+            funcionario.setDataInativacao(LocalDateTime.now());
+        }
         return FuncionarioMapper.paraResponse(funcionario);
     }
 
@@ -114,6 +118,7 @@ public class FuncionarioService {
         }
 
         funcionario.setAtivo(true);
+        funcionario.setDataInativacao(null);
 
         Funcionario funcionarioAtualizado =
                 funcionarioRepository.save(funcionario);

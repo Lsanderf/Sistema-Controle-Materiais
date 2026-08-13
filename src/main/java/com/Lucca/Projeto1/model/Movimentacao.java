@@ -36,6 +36,10 @@ public class Movimentacao {
     @Column(nullable = false)
     private LocalDateTime dataMovimentacao;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "usuario_id", nullable = true)
+    private Usuario registradoPor;
+
     public Movimentacao() {
     }
 
@@ -89,5 +93,13 @@ public class Movimentacao {
 
     public void setDataMovimentacao(LocalDateTime dataMovimentacao) {
         this.dataMovimentacao = dataMovimentacao;
+    }
+
+    public Usuario getRegistradoPor() {
+        return registradoPor;
+    }
+
+    public void setRegistradoPor(Usuario registradoPor) {
+        this.registradoPor = registradoPor;
     }
 }

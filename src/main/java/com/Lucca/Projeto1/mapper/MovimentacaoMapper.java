@@ -29,6 +29,16 @@ public class MovimentacaoMapper {
                         ? movimentacao.getMaterial().getNome()
                         : null;
 
+        Long usuarioId =
+                movimentacao.getRegistradoPor() != null
+                        ? movimentacao.getRegistradoPor().getId()
+                        : null;
+
+        String usuarioUsername =
+                movimentacao.getRegistradoPor() != null
+                        ? movimentacao.getRegistradoPor().getUsername()
+                        : null;
+
         return new MovimentacaoResponse(
                 movimentacao.getId(),
                 nomeFuncionario,
@@ -36,7 +46,9 @@ public class MovimentacaoMapper {
                 nomeMaterial,
                 movimentacao.getQuantidade(),
                 movimentacao.getTipo(),
-                movimentacao.getDataMovimentacao()
+                movimentacao.getDataMovimentacao(),
+                usuarioId,
+                usuarioUsername
         );
     }
 }

@@ -52,6 +52,24 @@ public class ContratoController {
         return ResponseEntity.ok(novoContrato);
     }
 
+    @PatchMapping("/{id}/desativar")
+    public ResponseEntity<ContratoResponse> desativar(
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(
+                contratoService.desativarContrato(id)
+        );
+    }
+
+    @PatchMapping("/{id}/ativar")
+    public ResponseEntity<ContratoResponse> ativar(
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(
+                contratoService.ativarContrato(id)
+        );
+    }
+
     @DeleteMapping("/{id}")
     public void deletar(@PathVariable Long id){
         contratoService.deletarContrato(id);

@@ -10,6 +10,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "tb_usuarios")
 public class Usuario {
@@ -31,6 +33,9 @@ public class Usuario {
 
     @Column(nullable = false)
     private Boolean ativo = true;
+
+    @Column(name = "data_inativacao")
+    private LocalDateTime dataInativacao;
 
     public Usuario() {
     }
@@ -80,5 +85,13 @@ public class Usuario {
 
     public void setAtivo(Boolean ativo) {
         this.ativo = ativo;
+    }
+
+    public LocalDateTime getDataInativacao() {
+        return dataInativacao;
+    }
+
+    public void setDataInativacao(LocalDateTime dataInativacao) {
+        this.dataInativacao = dataInativacao;
     }
 }

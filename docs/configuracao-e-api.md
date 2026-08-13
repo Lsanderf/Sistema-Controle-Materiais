@@ -50,13 +50,19 @@ Use o token nas demais chamadas:
 Authorization: Bearer jwt
 ```
 
-Cadastro de usuário, somente `ADMIN`:
+Gerenciamento de usuários, somente `ADMIN`:
 
 ```http
+GET /usuarios
+GET /usuarios/{id}
 POST /usuarios
+PUT /usuarios/{id}
+PATCH /usuarios/{id}/ativar
+PATCH /usuarios/{id}/desativar
 Authorization: Bearer jwt
-Content-Type: application/json
 ```
+
+O cadastro recebe:
 
 ```json
 {
@@ -65,6 +71,19 @@ Content-Type: application/json
   "role": "OPERADOR"
 }
 ```
+
+A edição recebe username, role e, opcionalmente, `novaSenha`:
+
+```json
+{
+  "username": "operador_estoque",
+  "role": "OPERADOR",
+  "novaSenha": "novaSenhaSegura"
+}
+```
+
+Sem `novaSenha`, a senha atual é mantida. As respostas expõem apenas `id`,
+`username`, `role` e `ativo`; senha e hash nunca são serializados.
 
 Papéis disponíveis: `ADMIN`, `OPERADOR`, `CONSULTA`.
 
@@ -76,6 +95,27 @@ Papéis disponíveis: `ADMIN`, `OPERADOR`, `CONSULTA`.
 - Alterações em materiais, funcionários e contratos: `ADMIN`.
 - `/usuarios/**`: `ADMIN`.
 - Endpoints não configurados exigem autenticação.
+
+O status e a role atuais do usuário são consultados no banco durante cada
+requisição autenticada. Assim, tokens já emitidos deixam de funcionar quando a
+conta é desativada ou tem suas permissões alteradas.
+
+## Responsável pela Movimentação
+
+Entradas, retiradas e devoluções associam automaticamente a movimentação ao
+`Usuario` autenticado. Os requests não aceitam `usuarioId`, username ou outro
+campo que permita escolher o responsável.
+
+As respostas de movimentação incluem:
+
+```json
+{
+  "usuarioId": 2,
+  "usuarioUsername": "operador1"
+}
+```
+
+Registros anteriores à associação retornam ambos os campos como `null`.
 
 ## Regras de Estoque
 
@@ -106,3 +146,8 @@ A migration `V2__seguranca_constraints_e_indices.sql` cria a tabela de usuários
 - CPF normalizado, sem pontos, traços ou espaços.
 
 Se o banco atual já tiver dados duplicados que violem essas regras, a migration falhará. Corrija esses registros manualmente antes de aplicar a migration.
+
+A migration `V3__adicionar_usuario_responsavel_movimentacao.sql` adiciona
+`usuario_id` e sua chave estrangeira a `tb_movimentacoes`. A coluna permanece
+aceitando `null` para preservar movimentações antigas; nenhum usuário é
+atribuído retroativamente.

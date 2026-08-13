@@ -11,6 +11,7 @@ import com.Lucca.Projeto1.repository.ContratoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -83,6 +84,10 @@ public class ContratoService {
                 request,
                 novoContrato
         );
+        atualizarStatusSeNecessario(
+                novoContrato,
+                request.getAtivo()
+        );
 
         Contrato contratoAtualizado =
                 contratoRepository.save(novoContrato);
@@ -90,14 +95,69 @@ public class ContratoService {
         return ContratoMapper.paraResponse(contratoAtualizado);
     }
 
+    @Transactional
+    public ContratoResponse desativarContrato(Long id) {
+        Contrato contrato = buscarEntidade(id);
+
+        desativarSeAtivo(contrato);
+
+        return ContratoMapper.paraResponse(contratoRepository.save(contrato));
+    }
+
+    @Transactional
+    public ContratoResponse ativarContrato(Long id) {
+        Contrato contrato = buscarEntidade(id);
+
+        if (Boolean.TRUE.equals(contrato.getAtivo())) {
+            throw new RegraNegocioException("O contrato jÃ¡ estÃ¡ ativo");
+        }
+
+        ativarEntidade(contrato);
+
+        return ContratoMapper.paraResponse(contratoRepository.save(contrato));
+    }
+
     //Deletar
     public void deletarContrato(Long id){
-        Contrato contrato = contratoRepository.
-                findById(id).orElseThrow(() ->
-                        new RecursoNaoEncontradoException("Contrato nao encontrado!"));
+        Contrato contrato = buscarEntidade(id);
         contratoRepository.delete(contrato);
     }
 
+    private Contrato buscarEntidade(Long id) {
+        return contratoRepository.findById(id)
+                .orElseThrow(() ->
+                        new RecursoNaoEncontradoException(
+                                "Contrato nao encontrado!"
+                        )
+                );
+    }
 
+    private void atualizarStatusSeNecessario(
+            Contrato contrato,
+            Boolean ativoSolicitado
+    ) {
+        if (Boolean.TRUE.equals(contrato.getAtivo())
+                == Boolean.TRUE.equals(ativoSolicitado)) {
+            return;
+        }
+
+        if (Boolean.TRUE.equals(ativoSolicitado)) {
+            ativarEntidade(contrato);
+        } else {
+            desativarSeAtivo(contrato);
+        }
+    }
+
+    private void desativarSeAtivo(Contrato contrato) {
+        if (Boolean.TRUE.equals(contrato.getAtivo())) {
+            contrato.setAtivo(false);
+            contrato.setDataInativacao(LocalDateTime.now());
+        }
+    }
+
+    private void ativarEntidade(Contrato contrato) {
+        contrato.setAtivo(true);
+        contrato.setDataInativacao(null);
+    }
 
 }

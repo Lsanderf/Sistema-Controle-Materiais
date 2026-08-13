@@ -28,7 +28,8 @@ public class ContratoMapper {
                 contrato.getId(),
                 contrato.getNome(),
                 contrato.getDescricao(),
-                contrato.getAtivo()
+                contrato.getAtivo(),
+                contrato.getDataInativacao()
         );
     }
 
@@ -38,6 +39,5 @@ public class ContratoMapper {
     ) {
         contrato.setNome(request.getNome());
         contrato.setDescricao(request.getDescricao());
-        contrato.setAtivo(request.getAtivo());
     }
 }
