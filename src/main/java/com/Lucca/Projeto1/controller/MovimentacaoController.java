@@ -1,6 +1,5 @@
 package com.Lucca.Projeto1.controller;
 
-import com.Lucca.Projeto1.dto.movimentacao.EntradaEstoqueRequest;
 import com.Lucca.Projeto1.dto.movimentacao.MovimentacaoRequest;
 import com.Lucca.Projeto1.service.MovimentacaoService;
 import org.springframework.http.HttpStatus;
@@ -73,18 +72,6 @@ public class MovimentacaoController {
         return ResponseEntity.ok(
                 movimentacaoService.listarPorMaterial(materialId)
         );
-    }
-
-    @PostMapping("/entrada")
-    public ResponseEntity<MovimentacaoResponse> registrarEntrada(
-            @Valid @RequestBody EntradaEstoqueRequest request
-    ) {
-        MovimentacaoResponse response =
-                movimentacaoService.registrarEntrada(request);
-
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(response);
     }
 
 }

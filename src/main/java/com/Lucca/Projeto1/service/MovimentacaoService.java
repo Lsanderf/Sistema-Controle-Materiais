@@ -1,6 +1,5 @@
 package com.Lucca.Projeto1.service;
 
-import com.Lucca.Projeto1.dto.movimentacao.EntradaEstoqueRequest;
 import com.Lucca.Projeto1.dto.movimentacao.MovimentacaoRequest;
 import com.Lucca.Projeto1.dto.movimentacao.MovimentacaoResponse;
 import com.Lucca.Projeto1.exception.RecursoNaoEncontradoException;
@@ -45,39 +44,6 @@ public class MovimentacaoService {
         this.contratoRepository = contratoRepository;
         this.materialRepository = materialRepository;
         this.usuarioAutenticadoService = usuarioAutenticadoService;
-    }
-
-    @Transactional
-    public MovimentacaoResponse registrarEntrada(
-            EntradaEstoqueRequest request
-    ) {
-        validarQuantidade(request.getQuantidade());
-        Usuario usuarioAutenticado = usuarioAutenticadoService.obter();
-
-        Material material = buscarMaterialComBloqueio(request.getMaterialId());
-        int novoEstoque = somarEstoque(
-                estoqueAtual(material),
-                request.getQuantidade()
-        );
-
-        material.setQuantidadeEstoque(novoEstoque);
-
-        Movimentacao movimentacao = new Movimentacao();
-        movimentacao.setMaterial(material);
-        movimentacao.setQuantidade(request.getQuantidade());
-        movimentacao.setTipo(TipoMovimentacao.ENTRADA);
-        movimentacao.setDataMovimentacao(LocalDateTime.now());
-        movimentacao.setFuncionario(null);
-        movimentacao.setContrato(null);
-        movimentacao.setRegistradoPor(usuarioAutenticado);
-        movimentacao.setNotaFiscal(null);
-
-        Movimentacao movimentacaoSalva =
-                movimentacaoRepository.save(movimentacao);
-
-        return MovimentacaoMapper.paraResponse(
-                movimentacaoSalva
-        );
     }
 
     @Transactional
@@ -247,7 +213,7 @@ public class MovimentacaoService {
 
         if (tipo == TipoMovimentacao.ENTRADA) {
             throw new RegraNegocioException(
-                    "Entradas devem ser registradas pelo endpoint /movimentacoes/entrada"
+                    "Entradas devem ser registradas pela confirmacao de uma nota fiscal"
             );
         }
 

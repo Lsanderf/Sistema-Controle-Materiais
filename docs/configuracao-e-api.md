@@ -91,7 +91,8 @@ Papéis disponíveis: `ADMIN`, `OPERADOR`, `CONSULTA`.
 
 - `/auth/login` e `OPTIONS /**`: público.
 - `GET /materiais/**`, `GET /funcionarios/**`, `GET /contratos/**` e `GET /movimentacoes/**`: `ADMIN`, `OPERADOR` e `CONSULTA`.
-- `POST /movimentacoes` e `POST /movimentacoes/entrada`: `ADMIN` e `OPERADOR`.
+- `POST /movimentacoes`: `ADMIN` e `OPERADOR`.
+- `POST /notas-fiscais` e `POST /notas-fiscais/{id}/confirmar`: `ADMIN` e `OPERADOR`.
 - Alterações em materiais, funcionários e contratos: `ADMIN`.
 - `/usuarios/**`: `ADMIN`.
 - Endpoints não configurados exigem autenticação.
@@ -102,9 +103,10 @@ conta é desativada ou tem suas permissões alteradas.
 
 ## Responsável pela Movimentação
 
-Entradas, retiradas e devoluções associam automaticamente a movimentação ao
-`Usuario` autenticado. Os requests não aceitam `usuarioId`, username ou outro
-campo que permita escolher o responsável.
+Entradas geradas por nota fiscal, retiradas e devoluções associam
+automaticamente a movimentação ao `Usuario` autenticado. Os requests não
+aceitam `usuarioId`, username ou outro campo que permita escolher o
+responsável.
 
 As respostas de movimentação incluem:
 
@@ -121,8 +123,9 @@ Registros anteriores à associação retornam ambos os campos como `null`.
 
 - `POST /materiais` cadastra material novo com `quantidadeEstoque = 0`.
 - O request de cadastro de material recebe apenas `nome` e `descricao`.
-- O estoque só aumenta por `POST /movimentacoes/entrada`.
+- O estoque só aumenta pela confirmação de uma nota fiscal de entrada em `POST /notas-fiscais/{id}/confirmar`.
 - `POST /movimentacoes` aceita somente `RETIRADA` e `DEVOLUCAO`; `ENTRADA` é rejeitada nesse endpoint.
+- Não existe endpoint público para entrada manual de estoque.
 - Cada operação aceita no máximo 10.000 unidades.
 - O estoque não pode ficar negativo.
 - Alterações de estoque usam bloqueio pessimista do material dentro da mesma transação da movimentação.

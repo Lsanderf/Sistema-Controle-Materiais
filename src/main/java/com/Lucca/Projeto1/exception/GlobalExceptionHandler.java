@@ -15,6 +15,8 @@ import org.springframework.transaction.TransactionTimedOutException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -86,6 +88,23 @@ public class GlobalExceptionHandler {
             RecursoNaoEncontradoException exception
     ) {
         return responder(HttpStatus.NOT_FOUND, exception.getMessage());
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Map<String, Object>> tratarRotaNaoEncontrada(
+            NoResourceFoundException exception
+    ) {
+        return responder(HttpStatus.NOT_FOUND, "Recurso nÃ£o encontrado");
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<Map<String, Object>> tratarMetodoNaoSuportado(
+            HttpRequestMethodNotSupportedException exception
+    ) {
+        return responder(
+                HttpStatus.METHOD_NOT_ALLOWED,
+                "Metodo HTTP nao permitido para este recurso"
+        );
     }
 
     @ExceptionHandler(RegraNegocioException.class)

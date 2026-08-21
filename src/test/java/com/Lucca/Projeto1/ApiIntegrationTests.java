@@ -13,6 +13,7 @@ import com.Lucca.Projeto1.repository.FuncionarioRepository;
 import com.Lucca.Projeto1.repository.MaterialRepository;
 import com.Lucca.Projeto1.repository.MovimentacaoRepository;
 import com.Lucca.Projeto1.repository.UsuarioRepository;
+import com.Lucca.Projeto1.service.MovimentacaoService;
 import com.Lucca.Projeto1.service.UsuarioService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,9 +36,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -169,22 +170,29 @@ class ApiIntegrationTests {
     }
 
     @Test
-    void postMovimentacoesComEntradaERejeitado() throws Exception {
+    void postMovimentacoesComEntradaERejeitadoENaoAlteraEstoque()
+            throws Exception {
+        ContextoMovimentacao contexto = criarContextoMovimentacao(10);
+
         mockMvc.perform(post("/movimentacoes")
                         .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
-                                "funcionarioId", 1,
-                                "contratoId", 1,
-                                "materialId", 1,
-                                "quantidade", 1,
+                                "funcionarioId", contexto.funcionario().getId(),
+                                "contratoId", contexto.contrato().getId(),
+                                "materialId", contexto.material().getId(),
+                                "quantidade", 7,
                                 "tipo", "ENTRADA"
                         ))))
                 .andExpect(status().isConflict());
+
+        assertEquals(10, estoque(contexto.material()));
+        assertTrue(movimentacaoRepository.findAll().isEmpty());
     }
 
     @Test
-    void entradaAumentaEstoqueECriaMovimentacao() throws Exception {
+    void endpointPublicoDeEntradaManualNaoExisteENaoAlteraEstoque()
+            throws Exception {
         Material material = criarMaterial("Capacete", 0);
 
         mockMvc.perform(post("/movimentacoes/entrada")
@@ -194,40 +202,51 @@ class ApiIntegrationTests {
                                 "materialId", material.getId(),
                                 "quantidade", 7
                         ))))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.tipo").value("ENTRADA"))
-                .andExpect(jsonPath("$.usuarioUsername").value("operador"))
-                .andExpect(jsonPath("$.usuarioId").isNumber());
+                .andExpect(status().isMethodNotAllowed());
 
         assertEquals(
-                7,
+                0,
                 materialRepository.findById(material.getId()).orElseThrow()
                         .getQuantidadeEstoque()
         );
-        assertEquals(1, movimentacaoRepository.findAll().size());
+        assertTrue(movimentacaoRepository.findAll().isEmpty());
+    }
+
+    @Test
+    void movimentacaoServiceNaoExpoeMetodoPublicoDeEntradaManual() {
+        assertTrue(
+                Arrays.stream(MovimentacaoService.class.getMethods())
+                        .noneMatch(method ->
+                                method.getName().equals("registrarEntrada")
+                        )
+        );
     }
 
     @Test
     void usuarioResponsavelNaoPodeSerEscolhidoPeloRequest() throws Exception {
-        Material material = criarMaterial("Capacete", 0);
+        ContextoMovimentacao contexto = criarContextoMovimentacao(10);
         Usuario admin = usuarioRepository
                 .findByUsernameIgnoreCase("admin")
                 .orElseThrow();
 
-        mockMvc.perform(post("/movimentacoes/entrada")
+        mockMvc.perform(post("/movimentacoes")
                         .header(
                                 HttpHeaders.AUTHORIZATION,
                                 bearer(operadorToken)
                         )
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
-                                "materialId", material.getId(),
-                                "quantidade", 7,
+                                "funcionarioId", contexto.funcionario().getId(),
+                                "contratoId", contexto.contrato().getId(),
+                                "materialId", contexto.material().getId(),
+                                "quantidade", 1,
+                                "tipo", "RETIRADA",
                                 "usuarioId", admin.getId()
                         ))))
                 .andExpect(status().isBadRequest());
 
         assertTrue(movimentacaoRepository.findAll().isEmpty());
+        assertEquals(10, estoque(contexto.material()));
     }
 
     @Test
@@ -357,56 +376,46 @@ class ApiIntegrationTests {
     }
 
     @Test
-    void quantidadeZeroERejeitada() throws Exception {
-        mockMvc.perform(post("/movimentacoes/entrada")
-                        .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken))
+    void cadastroDeMaterialNaoPermiteDefinirEstoqueInicialPeloRequest()
+            throws Exception {
+        MvcResult result = mockMvc.perform(post("/materiais")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
-                                "materialId", 1,
-                                "quantidade", 0
+                                "nome", "Capacete",
+                                "descricao", "Capacete para uso em obra",
+                                "quantidadeEstoque", 10000
                         ))))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void quantidadeNegativaERejeitada() throws Exception {
-        mockMvc.perform(post("/movimentacoes/entrada")
-                        .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of(
-                                "materialId", 1,
-                                "quantidade", -1
-                        ))))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void quantidadeDezMilEUmERejeitada() throws Exception {
-        mockMvc.perform(post("/movimentacoes/entrada")
-                        .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of(
-                                "materialId", 1,
-                                "quantidade", 10001
-                        ))))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void quantidadeDezMilEAceita() throws Exception {
-        Material material = criarMaterial("Capacete", 0);
-
-        mockMvc.perform(post("/movimentacoes/entrada")
-                        .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of(
-                                "materialId", material.getId(),
-                                "quantidade", 10000
-                        ))))
-                .andExpect(status().isCreated());
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.quantidadeEstoque").value(0))
+                .andReturn();
 
         assertEquals(
-                10000,
+                0,
+                materialRepository.findById(
+                        jsonResponse(result).get("id").asLong()
+                ).orElseThrow().getQuantidadeEstoque()
+        );
+    }
+
+    @Test
+    void atualizacaoDeMaterialNaoPermiteAlterarEstoquePeloRequest()
+            throws Exception {
+        Material material = criarMaterial("Capacete", 0);
+
+        mockMvc.perform(put("/materiais/{id}", material.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "nome", "Capacete atualizado",
+                                "descricao", "Descricao atualizada",
+                                "quantidadeEstoque", 10000
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.quantidadeEstoque").value(0));
+
+        assertEquals(
+                0,
                 materialRepository.findById(material.getId()).orElseThrow()
                         .getQuantidadeEstoque()
         );
@@ -872,6 +881,12 @@ class ApiIntegrationTests {
         return materialRepository.save(
                 new Material(nome, "Descrição do material", estoque)
         );
+    }
+
+    private int estoque(Material material) {
+        return materialRepository.findById(material.getId())
+                .orElseThrow()
+                .getQuantidadeEstoque();
     }
 
     private Funcionario criarFuncionario(String nome, String cpf) {
