@@ -91,11 +91,21 @@ public class SecurityConfig {
                         .hasAnyRole("ADMIN", "OPERADOR", "CONSULTA")
                         .requestMatchers(HttpMethod.GET, "/movimentacoes", "/movimentacoes/**")
                         .hasAnyRole("ADMIN", "OPERADOR", "CONSULTA")
+                        .requestMatchers(HttpMethod.GET, "/notas-fiscais", "/notas-fiscais/**")
+                        .hasAnyRole("ADMIN", "OPERADOR", "CONSULTA")
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/movimentacoes",
                                 "/movimentacoes/entrada"
                         )
+                        .hasAnyRole("ADMIN", "OPERADOR")
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/notas-fiscais",
+                                "/notas-fiscais/*/confirmar"
+                        )
+                        .hasAnyRole("ADMIN", "OPERADOR")
+                        .requestMatchers(HttpMethod.PUT, "/notas-fiscais/*")
                         .hasAnyRole("ADMIN", "OPERADOR")
                         .requestMatchers("/materiais", "/materiais/**")
                         .hasRole("ADMIN")

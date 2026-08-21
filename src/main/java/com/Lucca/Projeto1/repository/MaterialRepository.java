@@ -1,5 +1,7 @@
 package com.Lucca.Projeto1.repository;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 import jakarta.persistence.LockModeType;
@@ -16,4 +18,15 @@ public interface    MaterialRepository extends JpaRepository<Material, Long>{
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT material FROM Material material WHERE material.id = :id")
     Optional<Material> findByIdComBloqueio(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT material
+            FROM Material material
+            WHERE material.id IN :ids
+            ORDER BY material.id
+            """)
+    List<Material> findAllByIdComBloqueio(
+            @Param("ids") Collection<Long> ids
+    );
 }

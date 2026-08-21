@@ -49,6 +49,7 @@ class MigrationCompatibilityTests {
                 .locations("classpath:db/migration")
                 .baselineOnMigrate(true)
                 .baselineVersion("2")
+                .target("4")
                 .load()
                 .migrate();
 
@@ -88,6 +89,7 @@ class MigrationCompatibilityTests {
                 .locations("classpath:db/migration")
                 .baselineOnMigrate(true)
                 .baselineVersion("3")
+                .target("4")
                 .load()
                 .migrate();
 
@@ -97,6 +99,54 @@ class MigrationCompatibilityTests {
             validarRegistrosAntigos(connection, "tb_usuarios");
             validarRegistrosAntigos(connection, "tb_funcionarios");
             validarRegistrosAntigos(connection, "tb_contratos");
+        }
+    }
+
+    @Test
+    void migrationV5PreservaMovimentacoesAntigasSemNotaFiscal()
+            throws Exception {
+        String databaseName = "migration_"
+                + UUID.randomUUID().toString().replace("-", "");
+        String url = "jdbc:h2:mem:" + databaseName
+                + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1";
+
+        try (
+                Connection connection = DriverManager.getConnection(url, "sa", "");
+                Statement statement = connection.createStatement()
+        ) {
+            statement.execute(
+                    "CREATE TABLE tb_usuarios (id BIGINT PRIMARY KEY)"
+            );
+            statement.execute(
+                    "CREATE TABLE tb_materiais (id BIGINT PRIMARY KEY)"
+            );
+            statement.execute(
+                    "CREATE TABLE tb_movimentacoes (id BIGINT PRIMARY KEY)"
+            );
+            statement.execute(
+                    "INSERT INTO tb_movimentacoes (id) VALUES (1)"
+            );
+        }
+
+        MigrateResult result = Flyway.configure()
+                .dataSource(url, "sa", "")
+                .locations("classpath:db/migration")
+                .baselineOnMigrate(true)
+                .baselineVersion("4")
+                .load()
+                .migrate();
+
+        assertEquals(1, result.migrationsExecuted);
+
+        try (
+                Connection connection = DriverManager.getConnection(url, "sa", "");
+                Statement statement = connection.createStatement();
+                ResultSet rows = statement.executeQuery(
+                        "SELECT nota_fiscal_id FROM tb_movimentacoes WHERE id = 1"
+                )
+        ) {
+            assertTrue(rows.next());
+            assertNull(rows.getObject("nota_fiscal_id"));
         }
     }
 

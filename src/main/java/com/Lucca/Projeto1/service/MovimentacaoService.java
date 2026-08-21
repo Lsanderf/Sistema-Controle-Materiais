@@ -16,9 +16,6 @@ import com.Lucca.Projeto1.repository.ContratoRepository;
 import com.Lucca.Projeto1.repository.FuncionarioRepository;
 import com.Lucca.Projeto1.repository.MaterialRepository;
 import com.Lucca.Projeto1.repository.MovimentacaoRepository;
-import com.Lucca.Projeto1.repository.UsuarioRepository;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,20 +31,20 @@ public class MovimentacaoService {
     private final ContratoRepository contratoRepository;
     private final FuncionarioRepository funcionarioRepository;
     private final MaterialRepository materialRepository;
-    private final UsuarioRepository usuarioRepository;
+    private final UsuarioAutenticadoService usuarioAutenticadoService;
 
     public MovimentacaoService(
             MovimentacaoRepository movimentacaoRepository,
             FuncionarioRepository funcionarioRepository,
             ContratoRepository contratoRepository,
             MaterialRepository materialRepository,
-            UsuarioRepository usuarioRepository
+            UsuarioAutenticadoService usuarioAutenticadoService
     ) {
         this.movimentacaoRepository = movimentacaoRepository;
         this.funcionarioRepository = funcionarioRepository;
         this.contratoRepository = contratoRepository;
         this.materialRepository = materialRepository;
-        this.usuarioRepository = usuarioRepository;
+        this.usuarioAutenticadoService = usuarioAutenticadoService;
     }
 
     @Transactional
@@ -55,7 +52,7 @@ public class MovimentacaoService {
             EntradaEstoqueRequest request
     ) {
         validarQuantidade(request.getQuantidade());
-        Usuario usuarioAutenticado = obterUsuarioAutenticado();
+        Usuario usuarioAutenticado = usuarioAutenticadoService.obter();
 
         Material material = buscarMaterialComBloqueio(request.getMaterialId());
         int novoEstoque = somarEstoque(
@@ -73,6 +70,7 @@ public class MovimentacaoService {
         movimentacao.setFuncionario(null);
         movimentacao.setContrato(null);
         movimentacao.setRegistradoPor(usuarioAutenticado);
+        movimentacao.setNotaFiscal(null);
 
         Movimentacao movimentacaoSalva =
                 movimentacaoRepository.save(movimentacao);
@@ -88,7 +86,7 @@ public class MovimentacaoService {
     ) {
         validarQuantidade(request.getQuantidade());
         validarTipoMovimentacaoComum(request.getTipo());
-        Usuario usuarioAutenticado = obterUsuarioAutenticado();
+        Usuario usuarioAutenticado = usuarioAutenticadoService.obter();
 
         Funcionario funcionario = funcionarioRepository
                 .findById(request.getFuncionarioId())
@@ -157,6 +155,7 @@ public class MovimentacaoService {
         movimentacao.setTipo(request.getTipo());
         movimentacao.setDataMovimentacao(LocalDateTime.now());
         movimentacao.setRegistradoPor(usuarioAutenticado);
+        movimentacao.setNotaFiscal(null);
 
         Movimentacao movimentacaoSalva =
                 movimentacaoRepository.save(movimentacao);
@@ -308,28 +307,4 @@ public class MovimentacaoService {
                 .sum();
     }
 
-    private Usuario obterUsuarioAutenticado() {
-        Authentication authentication =
-                SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new RegraNegocioException(
-                    "Usuário autenticado não identificado"
-            );
-        }
-
-        Usuario usuario = usuarioRepository
-                .findByUsernameIgnoreCase(authentication.getName())
-                .orElseThrow(() ->
-                        new RegraNegocioException(
-                                "Usuário autenticado não encontrado"
-                        )
-                );
-
-        if (!usuario.isAtivo()) {
-            throw new RegraNegocioException("Usuário inativo");
-        }
-
-        return usuario;
-    }
 }

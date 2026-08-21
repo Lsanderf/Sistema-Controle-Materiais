@@ -17,6 +17,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
         private TipoMovimentacao tipo;
         private Long usuarioId;
         private String usuarioUsername;
+        private Long notaFiscalId;
 
         @JsonFormat(pattern = "dd/MM/yyyy HH:mm")
         private LocalDateTime dataMovimentacao;
@@ -33,7 +34,8 @@ import com.fasterxml.jackson.annotation.JsonFormat;
                 TipoMovimentacao tipo,
                 LocalDateTime dataMovimentacao,
                 Long usuarioId,
-                String usuarioUsername
+                String usuarioUsername,
+                Long notaFiscalId
         ) {
             this.id = id;
             this.funcionario = funcionario;
@@ -44,6 +46,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
             this.dataMovimentacao = dataMovimentacao;
             this.usuarioId = usuarioId;
             this.usuarioUsername = usuarioUsername;
+            this.notaFiscalId = notaFiscalId;
         }
 
         public Long getId() {
@@ -80,6 +83,10 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 
         public String getUsuarioUsername() {
             return usuarioUsername;
+        }
+
+        public Long getNotaFiscalId() {
+            return notaFiscalId;
         }
     }
 

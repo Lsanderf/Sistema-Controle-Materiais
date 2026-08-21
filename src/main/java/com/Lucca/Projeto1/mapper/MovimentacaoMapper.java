@@ -39,6 +39,11 @@ public class MovimentacaoMapper {
                         ? movimentacao.getRegistradoPor().getUsername()
                         : null;
 
+        Long notaFiscalId =
+                movimentacao.getNotaFiscal() != null
+                        ? movimentacao.getNotaFiscal().getId()
+                        : null;
+
         return new MovimentacaoResponse(
                 movimentacao.getId(),
                 nomeFuncionario,
@@ -48,7 +53,8 @@ public class MovimentacaoMapper {
                 movimentacao.getTipo(),
                 movimentacao.getDataMovimentacao(),
                 usuarioId,
-                usuarioUsername
+                usuarioUsername,
+                notaFiscalId
         );
     }
 }

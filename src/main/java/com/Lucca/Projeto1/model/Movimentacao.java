@@ -40,6 +40,10 @@ public class Movimentacao {
     @JoinColumn(name = "usuario_id", nullable = true)
     private Usuario registradoPor;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "nota_fiscal_id", nullable = true)
+    private NotaFiscalEntrada notaFiscal;
+
     public Movimentacao() {
     }
 
@@ -101,5 +105,13 @@ public class Movimentacao {
 
     public void setRegistradoPor(Usuario registradoPor) {
         this.registradoPor = registradoPor;
+    }
+
+    public NotaFiscalEntrada getNotaFiscal() {
+        return notaFiscal;
+    }
+
+    public void setNotaFiscal(NotaFiscalEntrada notaFiscal) {
+        this.notaFiscal = notaFiscal;
     }
 }
