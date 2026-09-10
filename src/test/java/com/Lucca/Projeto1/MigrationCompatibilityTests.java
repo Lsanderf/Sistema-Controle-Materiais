@@ -133,6 +133,7 @@ class MigrationCompatibilityTests {
                 .locations("classpath:db/migration")
                 .baselineOnMigrate(true)
                 .baselineVersion("4")
+                .target("5")
                 .load()
                 .migrate();
 
@@ -147,6 +148,75 @@ class MigrationCompatibilityTests {
         ) {
             assertTrue(rows.next());
             assertNull(rows.getObject("nota_fiscal_id"));
+        }
+    }
+
+    @Test
+    void migrationV6RemoveCaminhoArquivoSemAlterarNotasExistentes()
+            throws Exception {
+        String databaseName = "migration_"
+                + UUID.randomUUID().toString().replace("-", "");
+        String url = "jdbc:h2:mem:" + databaseName
+                + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1";
+
+        try (
+                Connection connection = DriverManager.getConnection(url, "sa", "");
+                Statement statement = connection.createStatement()
+        ) {
+            statement.execute("""
+                    CREATE TABLE tb_notas_fiscais (
+                        id BIGINT PRIMARY KEY,
+                        numero VARCHAR(50) NOT NULL,
+                        chave_acesso VARCHAR(44) NOT NULL,
+                        caminho_arquivo VARCHAR(1000)
+                    )
+                    """);
+            statement.execute("""
+                    INSERT INTO tb_notas_fiscais
+                        (id, numero, chave_acesso, caminho_arquivo)
+                    VALUES
+                        (1, '12345', '00000000000000000000000000000000000000000001',
+                            '/tmp/nf.pdf')
+                    """);
+        }
+
+        MigrateResult result = Flyway.configure()
+                .dataSource(url, "sa", "")
+                .locations("classpath:db/migration")
+                .baselineOnMigrate(true)
+                .baselineVersion("5")
+                .load()
+                .migrate();
+
+        assertEquals(1, result.migrationsExecuted);
+
+        try (
+                Connection connection = DriverManager.getConnection(url, "sa", "");
+                Statement statement = connection.createStatement();
+                ResultSet rows = statement.executeQuery("""
+                        SELECT COUNT(*)
+                        FROM INFORMATION_SCHEMA.COLUMNS
+                        WHERE TABLE_NAME = 'TB_NOTAS_FISCAIS'
+                            AND COLUMN_NAME = 'CAMINHO_ARQUIVO'
+                        """)
+        ) {
+            assertTrue(rows.next());
+            assertEquals(0, rows.getInt(1));
+        }
+
+        try (
+                Connection connection = DriverManager.getConnection(url, "sa", "");
+                Statement statement = connection.createStatement();
+                ResultSet rows = statement.executeQuery(
+                        "SELECT numero, chave_acesso FROM tb_notas_fiscais WHERE id = 1"
+                )
+        ) {
+            assertTrue(rows.next());
+            assertEquals("12345", rows.getString("numero"));
+            assertEquals(
+                    "00000000000000000000000000000000000000000001",
+                    rows.getString("chave_acesso")
+            );
         }
     }
 

@@ -60,9 +60,6 @@ public class NotaFiscalEntrada {
     @Column(name = "data_cadastro", nullable = false)
     private LocalDateTime dataCadastro;
 
-    @Column(name = "caminho_arquivo", length = 1000)
-    private String caminhoArquivo;
-
     @OneToMany(
             mappedBy = "notaFiscal",
             fetch = FetchType.LAZY,
@@ -161,14 +158,6 @@ public class NotaFiscalEntrada {
 
     public void setDataCadastro(LocalDateTime dataCadastro) {
         this.dataCadastro = dataCadastro;
-    }
-
-    public String getCaminhoArquivo() {
-        return caminhoArquivo;
-    }
-
-    public void setCaminhoArquivo(String caminhoArquivo) {
-        this.caminhoArquivo = caminhoArquivo;
     }
 
     public List<ItemNotaFiscal> getItens() {

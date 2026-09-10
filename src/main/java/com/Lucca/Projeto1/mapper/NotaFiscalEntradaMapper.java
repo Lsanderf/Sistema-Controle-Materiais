@@ -40,7 +40,6 @@ public final class NotaFiscalEntradaMapper {
                 notaFiscal.getCadastradaPor().getId(),
                 notaFiscal.getCadastradaPor().getUsername(),
                 notaFiscal.getDataCadastro(),
-                notaFiscal.getCaminhoArquivo(),
                 itens,
                 valorTotal,
                 movimentacoes

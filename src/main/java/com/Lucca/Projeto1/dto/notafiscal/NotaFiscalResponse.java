@@ -22,7 +22,6 @@ public class NotaFiscalResponse {
     private final Long cadastradaPorId;
     private final String cadastradaPorUsername;
     private final LocalDateTime dataCadastro;
-    private final String caminhoArquivo;
     private final List<ItemNotaFiscalResponse> itens;
     private final BigDecimal valorTotal;
     private final List<MovimentacaoResponse> movimentacoes;
@@ -40,7 +39,6 @@ public class NotaFiscalResponse {
             Long cadastradaPorId,
             String cadastradaPorUsername,
             LocalDateTime dataCadastro,
-            String caminhoArquivo,
             List<ItemNotaFiscalResponse> itens,
             BigDecimal valorTotal,
             List<MovimentacaoResponse> movimentacoes
@@ -57,7 +55,6 @@ public class NotaFiscalResponse {
         this.cadastradaPorId = cadastradaPorId;
         this.cadastradaPorUsername = cadastradaPorUsername;
         this.dataCadastro = dataCadastro;
-        this.caminhoArquivo = caminhoArquivo;
         this.itens = itens;
         this.valorTotal = valorTotal;
         this.movimentacoes = movimentacoes;
@@ -109,10 +106,6 @@ public class NotaFiscalResponse {
 
     public LocalDateTime getDataCadastro() {
         return dataCadastro;
-    }
-
-    public String getCaminhoArquivo() {
-        return caminhoArquivo;
     }
 
     public List<ItemNotaFiscalResponse> getItens() {
