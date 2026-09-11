@@ -52,9 +52,11 @@ public class MovimentacaoMapper {
                 movimentacao.getQuantidade(),
                 movimentacao.getTipo(),
                 movimentacao.getDataMovimentacao(),
+                movimentacao.getDataFinalizacao(),
                 usuarioId,
                 usuarioUsername,
-                notaFiscalId
+                notaFiscalId,
+                movimentacao.getObservacao()
         );
     }
 }

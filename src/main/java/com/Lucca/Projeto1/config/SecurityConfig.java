@@ -100,6 +100,11 @@ public class SecurityConfig {
                         .hasAnyRole("ADMIN", "OPERADOR")
                         .requestMatchers(
                                 HttpMethod.POST,
+                                "/movimentacoes/*/assinatura"
+                        )
+                        .hasAnyRole("ADMIN", "OPERADOR")
+                        .requestMatchers(
+                                HttpMethod.POST,
                                 "/notas-fiscais",
                                 "/notas-fiscais/*/confirmar"
                         )

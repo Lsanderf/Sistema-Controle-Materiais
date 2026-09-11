@@ -42,17 +42,20 @@ public class NotaFiscalEntradaService {
     private final MaterialRepository materialRepository;
     private final MovimentacaoRepository movimentacaoRepository;
     private final UsuarioAutenticadoService usuarioAutenticadoService;
+    private final ComprovanteMovimentacaoService comprovanteService;
 
     public NotaFiscalEntradaService(
             NotaFiscalEntradaRepository notaFiscalRepository,
             MaterialRepository materialRepository,
             MovimentacaoRepository movimentacaoRepository,
-            UsuarioAutenticadoService usuarioAutenticadoService
+            UsuarioAutenticadoService usuarioAutenticadoService,
+            ComprovanteMovimentacaoService comprovanteService
     ) {
         this.notaFiscalRepository = notaFiscalRepository;
         this.materialRepository = materialRepository;
         this.movimentacaoRepository = movimentacaoRepository;
         this.usuarioAutenticadoService = usuarioAutenticadoService;
+        this.comprovanteService = comprovanteService;
     }
 
     @Transactional
@@ -172,6 +175,7 @@ public class NotaFiscalEntradaService {
         notaFiscal.setStatus(StatusNotaFiscal.CONFIRMADA);
         notaFiscal.setDataEntrada(agora);
         movimentacaoRepository.saveAllAndFlush(movimentacoes);
+        comprovanteService.registrarTodos(movimentacoes);
         notaFiscalRepository.flush();
 
         List<MovimentacaoResponse> respostasMovimentacoes = movimentacoes
@@ -317,6 +321,8 @@ public class NotaFiscalEntradaService {
         movimentacao.setQuantidade(item.getQuantidade());
         movimentacao.setTipo(TipoMovimentacao.ENTRADA);
         movimentacao.setDataMovimentacao(dataMovimentacao);
+        movimentacao.setDataFinalizacao(dataMovimentacao);
+        movimentacao.setObservacao(null);
         movimentacao.setFuncionario(null);
         movimentacao.setContrato(null);
         movimentacao.setRegistradoPor(usuario);

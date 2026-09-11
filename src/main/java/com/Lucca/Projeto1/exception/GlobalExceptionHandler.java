@@ -16,6 +16,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
@@ -104,6 +106,26 @@ public class GlobalExceptionHandler {
         return responder(
                 HttpStatus.METHOD_NOT_ALLOWED,
                 "Metodo HTTP nao permitido para este recurso"
+        );
+    }
+
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    public ResponseEntity<Map<String, Object>> tratarParteMultipartAusente(
+            MissingServletRequestPartException exception
+    ) {
+        return responder(
+                HttpStatus.BAD_REQUEST,
+                "O arquivo da assinatura é obrigatório"
+        );
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, Object>> tratarArquivoMuitoGrande(
+            MaxUploadSizeExceededException exception
+    ) {
+        return responder(
+                HttpStatus.PAYLOAD_TOO_LARGE,
+                "O arquivo da assinatura excede o tamanho máximo permitido"
         );
     }
 

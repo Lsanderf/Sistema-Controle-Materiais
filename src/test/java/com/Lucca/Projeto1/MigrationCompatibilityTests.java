@@ -11,6 +11,7 @@ import java.sql.Statement;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -185,6 +186,7 @@ class MigrationCompatibilityTests {
                 .locations("classpath:db/migration")
                 .baselineOnMigrate(true)
                 .baselineVersion("5")
+                .target("6")
                 .load()
                 .migrate();
 
@@ -217,6 +219,125 @@ class MigrationCompatibilityTests {
                     "00000000000000000000000000000000000000000001",
                     rows.getString("chave_acesso")
             );
+        }
+    }
+
+    @Test
+    void migrationV7PreservaMovimentacoesAntigasEGeraComprovante()
+            throws Exception {
+        String databaseName = "migration_"
+                + UUID.randomUUID().toString().replace("-", "");
+        String url = "jdbc:h2:mem:" + databaseName
+                + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1";
+
+        try (
+                Connection connection = DriverManager.getConnection(url, "sa", "");
+                Statement statement = connection.createStatement()
+        ) {
+            statement.execute("""
+                    CREATE TABLE tb_usuarios (
+                        id BIGINT PRIMARY KEY,
+                        username VARCHAR(100) NOT NULL
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE tb_funcionarios (
+                        id BIGINT PRIMARY KEY,
+                        nome VARCHAR(150) NOT NULL,
+                        cargo VARCHAR(100) NOT NULL
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE tb_contratos (
+                        id BIGINT PRIMARY KEY,
+                        nome VARCHAR(150) NOT NULL,
+                        descricao VARCHAR(500)
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE tb_materiais (
+                        id BIGINT PRIMARY KEY,
+                        nome VARCHAR(150) NOT NULL,
+                        descricao VARCHAR(500)
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE tb_notas_fiscais (
+                        id BIGINT PRIMARY KEY,
+                        numero VARCHAR(50) NOT NULL,
+                        serie VARCHAR(20) NOT NULL,
+                        chave_acesso VARCHAR(44) NOT NULL,
+                        fornecedor VARCHAR(200) NOT NULL,
+                        cnpj_fornecedor VARCHAR(14) NOT NULL,
+                        data_emissao DATE NOT NULL,
+                        data_entrada TIMESTAMP
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE tb_movimentacoes (
+                        id BIGINT PRIMARY KEY,
+                        funcionario_id BIGINT,
+                        contrato_id BIGINT,
+                        material_id BIGINT NOT NULL,
+                        quantidade INTEGER NOT NULL,
+                        tipo VARCHAR(20) NOT NULL,
+                        data_movimentacao TIMESTAMP NOT NULL,
+                        usuario_id BIGINT,
+                        nota_fiscal_id BIGINT
+                    )
+                    """);
+
+            statement.execute(
+                    "INSERT INTO tb_usuarios VALUES (1, 'operador-legado')"
+            );
+            statement.execute(
+                    "INSERT INTO tb_funcionarios VALUES (1, 'João', 'Pedreiro')"
+            );
+            statement.execute(
+                    "INSERT INTO tb_contratos VALUES (1, 'Obra A', 'Contrato legado')"
+            );
+            statement.execute(
+                    "INSERT INTO tb_materiais VALUES (1, 'Capacete', 'EPI')"
+            );
+            statement.execute("""
+                    INSERT INTO tb_movimentacoes (
+                        id, funcionario_id, contrato_id, material_id,
+                        quantidade, tipo, data_movimentacao, usuario_id
+                    ) VALUES (
+                        10, 1, 1, 1, 2, 'RETIRADA',
+                        TIMESTAMP '2026-01-02 10:30:00', 1
+                    )
+                    """);
+        }
+
+        MigrateResult result = Flyway.configure()
+                .dataSource(url, "sa", "")
+                .locations("classpath:db/migration")
+                .baselineOnMigrate(true)
+                .baselineVersion("6")
+                .target("7")
+                .load()
+                .migrate();
+
+        assertEquals(1, result.migrationsExecuted);
+
+        try (
+                Connection connection = DriverManager.getConnection(url, "sa", "");
+                Statement statement = connection.createStatement();
+                ResultSet rows = statement.executeQuery("""
+                        SELECT movimentacao_id, material_nome, funcionario_nome,
+                               usuario_username, data_finalizacao, versao
+                        FROM tb_comprovantes_movimentacao
+                        WHERE movimentacao_id = 10
+                        """)
+        ) {
+            assertTrue(rows.next());
+            assertEquals(10L, rows.getLong("movimentacao_id"));
+            assertEquals("Capacete", rows.getString("material_nome"));
+            assertEquals("João", rows.getString("funcionario_nome"));
+            assertEquals("operador-legado", rows.getString("usuario_username"));
+            assertNotNull(rows.getTimestamp("data_finalizacao"));
+            assertEquals(1, rows.getInt("versao"));
         }
     }
 

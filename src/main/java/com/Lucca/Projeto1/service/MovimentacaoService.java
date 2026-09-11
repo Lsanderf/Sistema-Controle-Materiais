@@ -31,19 +31,22 @@ public class MovimentacaoService {
     private final FuncionarioRepository funcionarioRepository;
     private final MaterialRepository materialRepository;
     private final UsuarioAutenticadoService usuarioAutenticadoService;
+    private final ComprovanteMovimentacaoService comprovanteService;
 
     public MovimentacaoService(
             MovimentacaoRepository movimentacaoRepository,
             FuncionarioRepository funcionarioRepository,
             ContratoRepository contratoRepository,
             MaterialRepository materialRepository,
-            UsuarioAutenticadoService usuarioAutenticadoService
+            UsuarioAutenticadoService usuarioAutenticadoService,
+            ComprovanteMovimentacaoService comprovanteService
     ) {
         this.movimentacaoRepository = movimentacaoRepository;
         this.funcionarioRepository = funcionarioRepository;
         this.contratoRepository = contratoRepository;
         this.materialRepository = materialRepository;
         this.usuarioAutenticadoService = usuarioAutenticadoService;
+        this.comprovanteService = comprovanteService;
     }
 
     @Transactional
@@ -119,12 +122,17 @@ public class MovimentacaoService {
         movimentacao.setMaterial(material);
         movimentacao.setQuantidade(request.getQuantidade());
         movimentacao.setTipo(request.getTipo());
-        movimentacao.setDataMovimentacao(LocalDateTime.now());
+        LocalDateTime agora = LocalDateTime.now();
+        movimentacao.setDataMovimentacao(agora);
+        movimentacao.setDataFinalizacao(agora);
+        movimentacao.setObservacao(normalizarObservacao(request.getObservacao()));
         movimentacao.setRegistradoPor(usuarioAutenticado);
         movimentacao.setNotaFiscal(null);
 
         Movimentacao movimentacaoSalva =
-                movimentacaoRepository.save(movimentacao);
+                movimentacaoRepository.saveAndFlush(movimentacao);
+
+        comprovanteService.registrar(movimentacaoSalva);
 
         return MovimentacaoMapper.paraResponse(movimentacaoSalva);
     }
@@ -271,6 +279,13 @@ public class MovimentacaoService {
                     return 0;
                 })
                 .sum();
+    }
+
+    private String normalizarObservacao(String observacao) {
+        if (observacao == null || observacao.isBlank()) {
+            return null;
+        }
+        return observacao.trim();
     }
 
 }

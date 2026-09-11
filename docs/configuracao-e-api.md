@@ -14,6 +14,9 @@ Consulte `.env.example` para um modelo sem credenciais reais.
 - `APP_ADMIN_USERNAME`
 - `APP_ADMIN_PASSWORD`
 - `APP_CORS_ALLOWED_ORIGINS`, lista separada por vírgula, sem usar `*`
+- `APP_EVIDENCIAS_STORAGE`, opcional; nesta versão deve permanecer `local`
+- `APP_EVIDENCIAS_DIRETORIO`, opcional; padrão `./data/evidencias`
+- `APP_EVIDENCIAS_TAMANHO_MAXIMO`, opcional; padrão `2MB`
 
 O usuário administrador inicial só é criado quando a tabela de usuários está vazia e `APP_ADMIN_USERNAME` e `APP_ADMIN_PASSWORD` estão configurados.
 
@@ -92,6 +95,8 @@ Papéis disponíveis: `ADMIN`, `OPERADOR`, `CONSULTA`.
 - `/auth/login` e `OPTIONS /**`: público.
 - `GET /materiais/**`, `GET /funcionarios/**`, `GET /contratos/**` e `GET /movimentacoes/**`: `ADMIN`, `OPERADOR` e `CONSULTA`.
 - `POST /movimentacoes`: `ADMIN` e `OPERADOR`.
+- `POST /movimentacoes/{id}/assinatura`: `ADMIN` e `OPERADOR`.
+- `GET /movimentacoes/{id}/comprovante` e leitura de evidências: `ADMIN`, `OPERADOR` e `CONSULTA`.
 - `POST /notas-fiscais` e `POST /notas-fiscais/{id}/confirmar`: `ADMIN` e `OPERADOR`.
 - Alterações em materiais, funcionários e contratos: `ADMIN`.
 - `/usuarios/**`: `ADMIN`.
@@ -118,6 +123,64 @@ As respostas de movimentação incluem:
 ```
 
 Registros anteriores à associação retornam ambos os campos como `null`.
+
+## Comprovantes e Evidências
+
+Cada movimentação concluída gera, na mesma transação, um snapshot em
+`tb_comprovantes_movimentacao`. O snapshot preserva os dados exibidos no
+comprovante mesmo que material, funcionário, contrato ou usuário sejam
+renomeados no futuro. A migration também gera snapshots para movimentações já
+existentes.
+
+Consulta do comprovante:
+
+```http
+GET /movimentacoes/{id}/comprovante
+Authorization: Bearer jwt
+```
+
+A resposta é um DTO próprio e contém os dados da movimentação, material,
+funcionário, contrato, operador, Nota Fiscal (para entradas) e a lista de
+evidências. CPF e senha não fazem parte desse DTO.
+
+`POST /movimentacoes` também aceita o campo opcional `observacao`, com até
+1.000 caracteres. A data de finalização e a observação são adicionadas à
+resposta já existente sem remover nenhum campo anterior.
+
+Envio de assinatura para retirada ou devolução:
+
+```http
+POST /movimentacoes/{id}/assinatura
+Authorization: Bearer jwt
+Content-Type: multipart/form-data
+
+arquivo: assinatura.png
+```
+
+São aceitas imagens PNG e JPEG de até 2 MB por padrão. O formato é validado
+pelos bytes do arquivo, não apenas pelo `Content-Type` informado pelo cliente.
+Cada movimentação pode receber uma única assinatura e não há endpoint de
+substituição ou exclusão.
+
+O arquivo fica fora do banco. `tb_evidencias_movimentacao` armazena somente
+uma chave opaca de armazenamento, nome original, tipo de conteúdo, tamanho,
+SHA-256, data/hora, funcionário e usuário que anexou. O download autenticado é:
+
+```http
+GET /movimentacoes/{movimentacaoId}/evidencias/{evidenciaId}/arquivo
+Authorization: Bearer jwt
+```
+
+O serviço usa a interface `EvidenciaStorage`; a implementação atual grava em
+disco local. Para S3 ou MinIO, implemente a mesma interface, copie os objetos
+preservando as chaves e selecione o novo bean por configuração. Nenhuma imagem
+é armazenada como Base64 em coluna textual.
+
+No PostgreSQL, triggers da migration V8 bloqueiam alteração e exclusão das
+movimentações finalizadas, dos snapshots e dos metadados das evidências. O
+Hibernate também trata essas entidades como imutáveis. Fotos de devolução já
+estão previstas pelo tipo `FOTO_DEVOLUCAO`, mas ainda não possuem endpoint de
+upload nesta etapa.
 
 ## Regras de Estoque
 

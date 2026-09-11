@@ -5,6 +5,7 @@ import com.Lucca.Projeto1.model.TipoMovimentacao;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 
 public class MovimentacaoRequest {
 
@@ -27,6 +28,9 @@ public class MovimentacaoRequest {
 
     @NotNull(message = "O tipo da movimentação é obrigatório")
     private TipoMovimentacao tipo;
+
+    @Size(max = 1000, message = "A observação deve possuir no máximo 1.000 caracteres")
+    private String observacao;
 
     public Long getFuncionarioId() {
         return funcionarioId;
@@ -66,6 +70,14 @@ public class MovimentacaoRequest {
 
     public void setTipo(TipoMovimentacao tipo) {
         this.tipo = tipo;
+    }
+
+    public String getObservacao() {
+        return observacao;
+    }
+
+    public void setObservacao(String observacao) {
+        this.observacao = observacao;
     }
 
     @JsonAnySetter

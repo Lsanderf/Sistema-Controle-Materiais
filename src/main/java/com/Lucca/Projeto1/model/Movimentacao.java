@@ -1,10 +1,12 @@
 package com.Lucca.Projeto1.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.Immutable;
 
 import java.time.LocalDateTime;
 
 @Entity
+@Immutable
 @Table(name = "tb_movimentacoes")
 public class Movimentacao {
 
@@ -14,37 +16,53 @@ public class Movimentacao {
 
 
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
-    @JoinColumn(name = "funcionario_id", nullable = true)
+    @JoinColumn(name = "funcionario_id", nullable = true, updatable = false)
     private Funcionario funcionario;
 
 
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
-    @JoinColumn(name = "contrato_id", nullable = true)
+    @JoinColumn(name = "contrato_id", nullable = true, updatable = false)
     private Contrato contrato;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "material_id", nullable = false)
+    @JoinColumn(name = "material_id", nullable = false, updatable = false)
     private Material material;
 
-    @Column(nullable = false)
+    @Column(nullable = false, updatable = false)
     private Integer quantidade;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, updatable = false)
     private TipoMovimentacao tipo;
 
-    @Column(nullable = false)
+    @Column(nullable = false, updatable = false)
     private LocalDateTime dataMovimentacao;
 
+    @Column(name = "data_finalizacao", nullable = false, updatable = false)
+    private LocalDateTime dataFinalizacao;
+
+    @Column(length = 1000, updatable = false)
+    private String observacao;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
-    @JoinColumn(name = "usuario_id", nullable = true)
+    @JoinColumn(name = "usuario_id", nullable = true, updatable = false)
     private Usuario registradoPor;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
-    @JoinColumn(name = "nota_fiscal_id", nullable = true)
+    @JoinColumn(name = "nota_fiscal_id", nullable = true, updatable = false)
     private NotaFiscalEntrada notaFiscal;
 
     public Movimentacao() {
+    }
+
+    @PrePersist
+    private void preencherDatasDeConclusao() {
+        if (dataMovimentacao == null) {
+            dataMovimentacao = LocalDateTime.now();
+        }
+        if (dataFinalizacao == null) {
+            dataFinalizacao = dataMovimentacao;
+        }
     }
 
     public Long getId() {
@@ -97,6 +115,22 @@ public class Movimentacao {
 
     public void setDataMovimentacao(LocalDateTime dataMovimentacao) {
         this.dataMovimentacao = dataMovimentacao;
+    }
+
+    public LocalDateTime getDataFinalizacao() {
+        return dataFinalizacao;
+    }
+
+    public void setDataFinalizacao(LocalDateTime dataFinalizacao) {
+        this.dataFinalizacao = dataFinalizacao;
+    }
+
+    public String getObservacao() {
+        return observacao;
+    }
+
+    public void setObservacao(String observacao) {
+        this.observacao = observacao;
     }
 
     public Usuario getRegistradoPor() {

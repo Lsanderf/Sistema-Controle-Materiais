@@ -2,8 +2,14 @@ package com.Lucca.Projeto1.repository;
 import com.Lucca.Projeto1.model.Movimentacao;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
 
 import java.util.List;
+import java.util.Optional;
 
 
 public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long> {
@@ -15,6 +21,17 @@ public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long
             Long contratoId,
             Long materialId
     );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {
+            "material",
+            "registradoPor",
+            "funcionario",
+            "contrato",
+            "notaFiscal"
+    })
+    @Query("SELECT movimentacao FROM Movimentacao movimentacao WHERE movimentacao.id = :id")
+    Optional<Movimentacao> findByIdComBloqueio(@Param("id") Long id);
 
     @EntityGraph(attributePaths = {
             "material",
