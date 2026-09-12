@@ -43,25 +43,31 @@ public class NotaFiscalEntradaService {
     private final MovimentacaoRepository movimentacaoRepository;
     private final UsuarioAutenticadoService usuarioAutenticadoService;
     private final ComprovanteMovimentacaoService comprovanteService;
+    private final ChaveAcessoNfeService chaveAcessoService;
 
     public NotaFiscalEntradaService(
             NotaFiscalEntradaRepository notaFiscalRepository,
             MaterialRepository materialRepository,
             MovimentacaoRepository movimentacaoRepository,
             UsuarioAutenticadoService usuarioAutenticadoService,
-            ComprovanteMovimentacaoService comprovanteService
+            ComprovanteMovimentacaoService comprovanteService,
+            ChaveAcessoNfeService chaveAcessoService
     ) {
         this.notaFiscalRepository = notaFiscalRepository;
         this.materialRepository = materialRepository;
         this.movimentacaoRepository = movimentacaoRepository;
         this.usuarioAutenticadoService = usuarioAutenticadoService;
         this.comprovanteService = comprovanteService;
+        this.chaveAcessoService = chaveAcessoService;
     }
 
     @Transactional
     public NotaFiscalResponse criar(NotaFiscalRequest request) {
-        String chaveAcesso = normalizarChaveAcesso(request.getChaveAcesso());
-        validarChaveDuplicada(chaveAcesso, null);
+        String chaveAcesso = chaveAcessoService
+                .normalizarEValidarDisponibilidade(
+                        request.getChaveAcesso(),
+                        null
+                );
 
         NotaFiscalEntrada notaFiscal = new NotaFiscalEntrada();
         notaFiscal.setStatus(StatusNotaFiscal.RASCUNHO);
@@ -131,8 +137,11 @@ public class NotaFiscalEntradaService {
         NotaFiscalEntrada notaFiscal = buscarComBloqueio(id);
         validarRascunho(notaFiscal, "alterada");
 
-        String chaveAcesso = normalizarChaveAcesso(request.getChaveAcesso());
-        validarChaveDuplicada(chaveAcesso, id);
+        String chaveAcesso = chaveAcessoService
+                .normalizarEValidarDisponibilidade(
+                        request.getChaveAcesso(),
+                        id
+                );
 
         preencherDados(notaFiscal, request, chaveAcesso);
         substituirItens(notaFiscal, request.getItens());
@@ -392,38 +401,6 @@ public class NotaFiscalEntradaService {
                     "Uma nota fiscal confirmada não pode ser " + operacao
             );
         }
-    }
-
-    private void validarChaveDuplicada(String chaveAcesso, Long notaId) {
-        boolean duplicada = notaId == null
-                ? notaFiscalRepository.existsByChaveAcesso(chaveAcesso)
-                : notaFiscalRepository.existsByChaveAcessoAndIdNot(
-                        chaveAcesso,
-                        notaId
-                );
-
-        if (duplicada) {
-            throw new RegraNegocioException(
-                    "Já existe uma nota fiscal com essa chave de acesso"
-            );
-        }
-    }
-
-    private String normalizarChaveAcesso(String chaveAcesso) {
-        if (chaveAcesso == null
-                || !chaveAcesso.matches("[0-9.\\-/\\s]+")) {
-            throw new RegraNegocioException(
-                    "A chave de acesso deve conter apenas números e formatação"
-            );
-        }
-
-        String normalizada = chaveAcesso.replaceAll("\\D", "");
-        if (normalizada.length() != 44) {
-            throw new RegraNegocioException(
-                    "A chave de acesso deve conter exatamente 44 dígitos"
-            );
-        }
-        return normalizada;
     }
 
     private String normalizarCnpj(String cnpj) {

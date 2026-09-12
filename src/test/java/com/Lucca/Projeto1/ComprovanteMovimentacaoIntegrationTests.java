@@ -168,7 +168,7 @@ class ComprovanteMovimentacaoIntegrationTests {
     void comprovanteDeEntradaMantemVinculoEDadosDaNotaFiscal()
             throws Exception {
         Material material = criarMaterial("Luva", 0);
-        String chave = String.format("%044d", 91);
+        String chave = "52060433009911002506550120000007800267301615";
 
         MvcResult criacao = mockMvc.perform(post("/notas-fiscais")
                         .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken))

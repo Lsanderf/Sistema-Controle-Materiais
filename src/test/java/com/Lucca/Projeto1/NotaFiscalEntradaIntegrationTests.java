@@ -9,6 +9,7 @@ import com.Lucca.Projeto1.repository.MovimentacaoRepository;
 import com.Lucca.Projeto1.repository.NotaFiscalEntradaRepository;
 import com.Lucca.Projeto1.repository.UsuarioRepository;
 import com.Lucca.Projeto1.service.UsuarioService;
+import com.Lucca.Projeto1.validation.ValidadorChaveAcessoNfe;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -101,6 +102,44 @@ class NotaFiscalEntradaIntegrationTests {
         adminToken = token("admin", SENHA_ADMIN);
         operadorToken = token("operador", SENHA_OPERADOR);
         consultaToken = token("consulta", SENHA_CONSULTA);
+    }
+
+    @Test
+    void materialCriadoPelaApiSoRecebeEstoqueAoConfirmarNota() throws Exception {
+        MvcResult cadastro = mockMvc.perform(post("/materiais")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "nome", "CABO OPTICO DROP 1FO",
+                                "descricao", "CABO OPTICO DROP 1FO"
+                        ))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.quantidadeEstoque").value(0))
+                .andReturn();
+        Material material = materialRepository.findById(id(cadastro)).orElseThrow();
+        assertEquals(0, estoque(material));
+        assertEquals(0, movimentacaoRepository.count());
+        assertEquals(0, notaFiscalRepository.count());
+
+        Long notaId = id(criarNota(
+                adminToken,
+                chave(80),
+                List.of(item(material.getId(), 120, "2.50"))
+        ));
+        assertEquals(0, estoque(material));
+        assertEquals(0, movimentacaoRepository.count());
+
+        confirmar(notaId, adminToken);
+        assertEquals(120, estoque(material));
+        assertEquals(1, movimentacaoRepository.count());
+        assertEquals(TipoMovimentacao.ENTRADA,
+                movimentacaoRepository.findAll().getFirst().getTipo());
+
+        mockMvc.perform(post("/notas-fiscais/{id}/confirmar", notaId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andExpect(status().isConflict());
+        assertEquals(120, estoque(material));
+        assertEquals(1, movimentacaoRepository.count());
     }
 
     @Test
@@ -232,6 +271,38 @@ class NotaFiscalEntradaIntegrationTests {
         assertEquals(1, notaFiscalRepository.count());
         assertEquals(chave, notaFiscalRepository.findAll().getFirst()
                 .getChaveAcesso());
+    }
+
+    @Test
+    void backendRecusaChaveComDigitoVerificadorInvalido() throws Exception {
+        String chaveValida = chave(18);
+        int dvAlterado = (Character.digit(chaveValida.charAt(43), 10) + 1) % 10;
+        String chaveInvalida = chaveValida.substring(0, 43) + dvAlterado;
+
+        mockMvc.perform(post("/notas-fiscais")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(notaRequest(chaveInvalida, List.of()))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.erro").value(
+                        "Chave de acesso da NF-e inválida. Verifique os números informados."
+                ));
+
+        assertEquals(0, notaFiscalRepository.count());
+    }
+
+    @Test
+    void chaveComDvValidoContinuaNoFluxoDeCriacao() throws Exception {
+        String chaveValida = "52060433009911002506550120000007800267301615";
+
+        MvcResult resultado = criarNota(adminToken, chaveValida, List.of());
+
+        assertEquals(
+                chaveValida,
+                jsonResponse(resultado).get("chaveAcesso").asText()
+        );
+        assertEquals(chaveValida, notaFiscalRepository.findAll()
+                .getFirst().getChaveAcesso());
     }
 
     @Test
@@ -462,7 +533,9 @@ class NotaFiscalEntradaIntegrationTests {
     }
 
     private String chave(int valor) {
-        return String.format("%044d", valor);
+        String chaveSemDv = String.format("%043d", valor);
+        return chaveSemDv
+                + ValidadorChaveAcessoNfe.calcularDigitoVerificador(chaveSemDv);
     }
 
     private String formatarChave(String chave) {

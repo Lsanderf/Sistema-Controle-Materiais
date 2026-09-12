@@ -106,6 +106,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/notas-fiscais",
+                                "/notas-fiscais/importar-xml",
                                 "/notas-fiscais/*/confirmar"
                         )
                         .hasAnyRole("ADMIN", "OPERADOR")

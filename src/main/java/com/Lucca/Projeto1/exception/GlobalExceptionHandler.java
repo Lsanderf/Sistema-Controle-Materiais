@@ -3,6 +3,7 @@ package com.Lucca.Projeto1.exception;
 import jakarta.persistence.LockTimeoutException;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.persistence.PessimisticLockException;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -121,12 +122,31 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<Map<String, Object>> tratarArquivoMuitoGrande(
-            MaxUploadSizeExceededException exception
+            MaxUploadSizeExceededException exception,
+            HttpServletRequest request
     ) {
+        String mensagem = request.getRequestURI()
+                .startsWith("/notas-fiscais/importar-xml")
+                ? "O arquivo XML da NF-e excede o tamanho máximo permitido"
+                : "O arquivo da assinatura excede o tamanho máximo permitido";
         return responder(
                 HttpStatus.PAYLOAD_TOO_LARGE,
-                "O arquivo da assinatura excede o tamanho máximo permitido"
+                mensagem
         );
+    }
+
+    @ExceptionHandler(ArquivoMuitoGrandeException.class)
+    public ResponseEntity<Map<String, Object>> tratarArquivoMuitoGrande(
+            ArquivoMuitoGrandeException exception
+    ) {
+        return responder(HttpStatus.PAYLOAD_TOO_LARGE, exception.getMessage());
+    }
+
+    @ExceptionHandler(XmlNfeInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> tratarXmlNfeInvalido(
+            XmlNfeInvalidoException exception
+    ) {
+        return responder(HttpStatus.BAD_REQUEST, exception.getMessage());
     }
 
     @ExceptionHandler(RegraNegocioException.class)
