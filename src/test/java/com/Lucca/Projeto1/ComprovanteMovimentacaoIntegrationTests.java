@@ -5,6 +5,8 @@ import com.Lucca.Projeto1.model.Funcionario;
 import com.Lucca.Projeto1.model.Material;
 import com.Lucca.Projeto1.model.Role;
 import com.Lucca.Projeto1.model.TipoMovimentacao;
+import com.Lucca.Projeto1.model.Movimentacao;
+import com.Lucca.Projeto1.model.ComprovanteMovimentacao;
 import com.Lucca.Projeto1.repository.ComprovanteMovimentacaoRepository;
 import com.Lucca.Projeto1.repository.ContratoRepository;
 import com.Lucca.Projeto1.repository.EvidenciaMovimentacaoRepository;
@@ -33,6 +35,8 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static com.Lucca.Projeto1.ImagemEvidenciaTestSupport.movimentacaoAssinada;
+import static com.Lucca.Projeto1.ImagemEvidenciaTestSupport.imagem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -149,7 +153,8 @@ class ComprovanteMovimentacaoIntegrationTests {
                         .value(contexto.contrato().getId()))
                 .andExpect(jsonPath("$.registradoPor.username").value("operador"))
                 .andExpect(jsonPath("$.notaFiscal").isEmpty())
-                .andExpect(jsonPath("$.evidencias.length()").value(0))
+                .andExpect(jsonPath("$.evidencias.length()").value(1))
+                .andExpect(jsonPath("$.evidencias[0].tipo").value("ASSINATURA"))
                 .andExpect(jsonPath("$.versao").value(1));
     }
 
@@ -299,20 +304,19 @@ class ComprovanteMovimentacaoIntegrationTests {
     }
 
     @Test
-    void assinaturaEArmazenadaComoEvidenciaImutavelEProtegidaPorPerfil()
+    void assinaturaHistoricaEArmazenadaComoEvidenciaImutavelEProtegidaPorPerfil()
             throws Exception {
         Contexto contexto = criarContexto(10);
-        Long movimentacaoId = id(registrarMovimentacao(
-                contexto,
-                TipoMovimentacao.RETIRADA,
-                2,
-                null
-        ));
-        byte[] png = new byte[]{
-                (byte) 0x89, 0x50, 0x4e, 0x47,
-                0x0d, 0x0a, 0x1a, 0x0a,
-                0x01, 0x02, 0x03
-        };
+        Movimentacao historica = new Movimentacao();
+        historica.setFuncionario(contexto.funcionario());
+        historica.setContrato(contexto.contrato());
+        historica.setMaterial(contexto.material());
+        historica.setQuantidade(2);
+        historica.setTipo(TipoMovimentacao.RETIRADA);
+        historica = movimentacaoRepository.saveAndFlush(historica);
+        comprovanteRepository.saveAndFlush(ComprovanteMovimentacao.registrar(historica));
+        Long movimentacaoId = historica.getId();
+        byte[] png = imagem("png", true);
         MockMultipartFile arquivo = new MockMultipartFile(
                 "arquivo",
                 "assinatura.png",
@@ -336,7 +340,7 @@ class ComprovanteMovimentacaoIntegrationTests {
                 .andExpect(jsonPath("$.contentType").value("image/png"))
                 .andExpect(jsonPath("$.storageKey").doesNotExist())
                 .andExpect(jsonPath("$.sha256").value(
-                        "7f47b756761a46e6d4a4d96f0d8a4448f8449235009d1f3ad1493f5c773c19e8"
+                        java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(png))
                 ))
                 .andReturn();
         JsonNode evidencia = jsonResponse(upload);
@@ -400,10 +404,8 @@ class ComprovanteMovimentacaoIntegrationTests {
             request.put("observacao", observacao);
         }
 
-        return mockMvc.perform(post("/movimentacoes")
-                        .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(request)))
+        return mockMvc.perform(movimentacaoAssinada(json(request))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken)))
                 .andExpect(status().isCreated())
                 .andReturn();
     }

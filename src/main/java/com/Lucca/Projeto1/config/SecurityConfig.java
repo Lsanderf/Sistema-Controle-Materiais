@@ -174,23 +174,27 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(allowedOrigins());
-        configuration.setAllowedMethods(
-                List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-        );
-        configuration.setAllowedHeaders(
-                List.of("Authorization", "Content-Type")
-        );
-        configuration.setAllowCredentials(false);
+    private List<String> allowedOriginPatterns() {
+        String origins = environment.getProperty("APP_CORS_ALLOWED_ORIGINS");
 
-        UrlBasedCorsConfigurationSource source =
-                new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
+        if (origins == null || origins.isBlank()) {
+            throw new IllegalStateException(
+                    "A variável de ambiente APP_CORS_ALLOWED_ORIGINS deve ser configurada"
+            );
+        }
 
-        return source;
+        List<String> allowedOrigins = Arrays.stream(origins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isBlank())
+                .toList();
+
+        if (allowedOrigins.isEmpty() || allowedOrigins.contains("*")) {
+            throw new IllegalStateException(
+                    "APP_CORS_ALLOWED_ORIGINS deve listar origens explícitas ou padrões controlados"
+            );
+        }
+
+        return allowedOrigins;
     }
 
     private List<String> allowedOrigins() {

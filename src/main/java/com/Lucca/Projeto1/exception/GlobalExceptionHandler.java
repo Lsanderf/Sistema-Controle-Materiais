@@ -116,7 +116,11 @@ public class GlobalExceptionHandler {
     ) {
         return responder(
                 HttpStatus.BAD_REQUEST,
-                "O arquivo da assinatura é obrigatório"
+                switch (exception.getRequestPartName()) {
+                    case "movimentacao" -> "Os dados da movimentação são obrigatórios";
+                    case "assinatura" -> "O arquivo da assinatura é obrigatório";
+                    default -> "A parte '" + exception.getRequestPartName() + "' é obrigatória";
+                }
         );
     }
 
@@ -128,7 +132,7 @@ public class GlobalExceptionHandler {
         String mensagem = request.getRequestURI()
                 .startsWith("/notas-fiscais/importar-xml")
                 ? "O arquivo XML da NF-e excede o tamanho máximo permitido"
-                : "O arquivo da assinatura excede o tamanho máximo permitido";
+                : "Os arquivos de evidência excedem o tamanho máximo permitido";
         return responder(
                 HttpStatus.PAYLOAD_TOO_LARGE,
                 mensagem

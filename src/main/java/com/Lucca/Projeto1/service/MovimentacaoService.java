@@ -17,6 +17,7 @@ import com.Lucca.Projeto1.repository.MaterialRepository;
 import com.Lucca.Projeto1.repository.MovimentacaoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -32,6 +33,8 @@ public class MovimentacaoService {
     private final MaterialRepository materialRepository;
     private final UsuarioAutenticadoService usuarioAutenticadoService;
     private final ComprovanteMovimentacaoService comprovanteService;
+    private final EvidenciaMovimentacaoService evidenciaService;
+    private final ImagemEvidenciaValidator imagemValidator;
 
     public MovimentacaoService(
             MovimentacaoRepository movimentacaoRepository,
@@ -39,7 +42,9 @@ public class MovimentacaoService {
             ContratoRepository contratoRepository,
             MaterialRepository materialRepository,
             UsuarioAutenticadoService usuarioAutenticadoService,
-            ComprovanteMovimentacaoService comprovanteService
+            ComprovanteMovimentacaoService comprovanteService,
+            EvidenciaMovimentacaoService evidenciaService,
+            ImagemEvidenciaValidator imagemValidator
     ) {
         this.movimentacaoRepository = movimentacaoRepository;
         this.funcionarioRepository = funcionarioRepository;
@@ -47,14 +52,23 @@ public class MovimentacaoService {
         this.materialRepository = materialRepository;
         this.usuarioAutenticadoService = usuarioAutenticadoService;
         this.comprovanteService = comprovanteService;
+        this.evidenciaService = evidenciaService;
+        this.imagemValidator = imagemValidator;
     }
 
     @Transactional
     public MovimentacaoResponse registrarMovimentacao(
-            MovimentacaoRequest request
+            MovimentacaoRequest request,
+            MultipartFile assinatura,
+            MultipartFile foto
     ) {
         validarQuantidade(request.getQuantidade());
         validarTipoMovimentacaoComum(request.getTipo());
+        if (foto != null && request.getTipo() != TipoMovimentacao.DEVOLUCAO) {
+            throw new RegraNegocioException("Foto do material é permitida apenas na devolução");
+        }
+        var assinaturaValidada = imagemValidator.validar(assinatura, true);
+        var fotoValidada = foto == null ? null : imagemValidator.validar(foto, false);
         Usuario usuarioAutenticado = usuarioAutenticadoService.obter();
 
         Funcionario funcionario = funcionarioRepository
@@ -132,6 +146,7 @@ public class MovimentacaoService {
         Movimentacao movimentacaoSalva =
                 movimentacaoRepository.saveAndFlush(movimentacao);
 
+        evidenciaService.registrarNaCriacao(movimentacaoSalva, assinaturaValidada, fotoValidada);
         comprovanteService.registrar(movimentacaoSalva);
 
         return MovimentacaoMapper.paraResponse(movimentacaoSalva);

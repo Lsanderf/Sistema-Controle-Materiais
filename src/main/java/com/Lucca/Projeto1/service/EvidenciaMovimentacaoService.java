@@ -13,10 +13,14 @@ import com.Lucca.Projeto1.model.Usuario;
 import com.Lucca.Projeto1.repository.EvidenciaMovimentacaoRepository;
 import com.Lucca.Projeto1.repository.MovimentacaoRepository;
 import com.Lucca.Projeto1.storage.EvidenciaStorage;
+import com.Lucca.Projeto1.service.ImagemEvidenciaValidator.ImagemValidada;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.unit.DataSize;
@@ -35,6 +39,8 @@ import java.util.UUID;
 @Service
 public class EvidenciaMovimentacaoService {
 
+    private static final Logger log = LoggerFactory.getLogger(EvidenciaMovimentacaoService.class);
+
     private static final TipoEvidenciaMovimentacao ASSINATURA =
             TipoEvidenciaMovimentacao.ASSINATURA;
 
@@ -43,18 +49,21 @@ public class EvidenciaMovimentacaoService {
     private final UsuarioAutenticadoService usuarioAutenticadoService;
     private final EvidenciaStorage storage;
     private final long tamanhoMaximoBytes;
+    private final ImagemEvidenciaValidator imagemValidator;
 
     public EvidenciaMovimentacaoService(
             MovimentacaoRepository movimentacaoRepository,
             EvidenciaMovimentacaoRepository evidenciaRepository,
             UsuarioAutenticadoService usuarioAutenticadoService,
             EvidenciaStorage storage,
+            ImagemEvidenciaValidator imagemValidator,
             @Value("${app.evidencias.tamanho-maximo:2MB}") String tamanhoMaximo
     ) {
         this.movimentacaoRepository = movimentacaoRepository;
         this.evidenciaRepository = evidenciaRepository;
         this.usuarioAutenticadoService = usuarioAutenticadoService;
         this.storage = storage;
+        this.imagemValidator = imagemValidator;
         this.tamanhoMaximoBytes = DataSize.parse(tamanhoMaximo).toBytes();
     }
 
@@ -77,19 +86,49 @@ public class EvidenciaMovimentacaoService {
             );
         }
 
-        byte[] conteudo = lerConteudo(arquivo);
-        FormatoImagem formato = identificarFormato(conteudo);
+        return armazenarEvidencia(movimentacao, ASSINATURA, imagemValidator.validar(arquivo, true));
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void registrarNaCriacao(
+            Movimentacao movimentacao,
+            ImagemValidada assinatura,
+            ImagemValidada foto
+    ) {
+        validarTipoComAssinatura(movimentacao);
+        if (assinatura == null) {
+            throw new RegraNegocioException("O arquivo da assinatura é obrigatório");
+        }
+        if (foto != null && movimentacao.getTipo() != TipoMovimentacao.DEVOLUCAO) {
+            throw new RegraNegocioException("Foto do material é permitida apenas na devolução");
+        }
+        armazenarEvidencia(movimentacao, ASSINATURA, assinatura);
+        if (foto != null) {
+            armazenarEvidencia(movimentacao, TipoEvidenciaMovimentacao.FOTO_DEVOLUCAO, foto);
+        }
+    }
+
+    private EvidenciaMovimentacaoResponse armazenarEvidencia(
+            Movimentacao movimentacao,
+            TipoEvidenciaMovimentacao tipo,
+            ImagemValidada imagem
+    ) {
+        Long movimentacaoId = movimentacao.getId();
+        byte[] conteudo = imagem.conteudo();
         Usuario usuario = usuarioAutenticadoService.obter();
         Funcionario funcionario = movimentacao.getFuncionario();
-        String storageKey = criarStorageKey(movimentacaoId, formato.extensao());
+        String storageKey = "movimentacoes/" + movimentacaoId + "/"
+                + tipo.name().toLowerCase(Locale.ROOT) + "/" + UUID.randomUUID() + "." + imagem.extensao();
 
-        storage.armazenar(storageKey, conteudo);
+        // Register before writing: even a storage implementation that writes then
+        // throws must participate in compensating cleanup on transaction rollback.
         registrarLimpezaEmCasoDeRollback(storageKey);
 
         try {
+            storage.armazenar(storageKey, conteudo);
             EvidenciaMovimentacao evidencia = new EvidenciaMovimentacao(
                     movimentacaoId,
-                    ASSINATURA,
+                    tipo,
                     LocalDateTime.now(),
                     funcionario.getId(),
                     funcionario.getNome(),
@@ -97,10 +136,10 @@ public class EvidenciaMovimentacaoService {
                     usuario.getUsername(),
                     storageKey,
                     normalizarNomeArquivo(
-                            arquivo.getOriginalFilename(),
-                            formato.extensao()
+                            imagem.nomeOriginal(),
+                            imagem.extensao()
                     ),
-                    formato.contentType(),
+                    imagem.contentType(),
                     (long) conteudo.length,
                     sha256(conteudo)
             );
@@ -155,67 +194,9 @@ public class EvidenciaMovimentacaoService {
         }
     }
 
-    private byte[] lerConteudo(MultipartFile arquivo) {
-        if (arquivo == null || arquivo.isEmpty()) {
-            throw new RegraNegocioException(
-                    "O arquivo da assinatura é obrigatório"
-            );
-        }
-        if (arquivo.getSize() > tamanhoMaximoBytes) {
-            throw new RegraNegocioException(
-                    "O arquivo da assinatura excede o tamanho máximo permitido"
-            );
-        }
-
-        try {
-            byte[] conteudo = arquivo.getBytes();
-            if (conteudo.length > tamanhoMaximoBytes) {
-                throw new RegraNegocioException(
-                        "O arquivo da assinatura excede o tamanho máximo permitido"
-                );
-            }
-            return conteudo;
-        } catch (IOException exception) {
-            throw new IllegalStateException(
-                    "Não foi possível ler o arquivo da assinatura",
-                    exception
-            );
-        }
-    }
-
-    private FormatoImagem identificarFormato(byte[] conteudo) {
-        if (conteudo.length >= 8
-                && (conteudo[0] & 0xff) == 0x89
-                && conteudo[1] == 0x50
-                && conteudo[2] == 0x4e
-                && conteudo[3] == 0x47
-                && conteudo[4] == 0x0d
-                && conteudo[5] == 0x0a
-                && conteudo[6] == 0x1a
-                && conteudo[7] == 0x0a) {
-            return new FormatoImagem("image/png", "png");
-        }
-
-        if (conteudo.length >= 3
-                && (conteudo[0] & 0xff) == 0xff
-                && (conteudo[1] & 0xff) == 0xd8
-                && (conteudo[2] & 0xff) == 0xff) {
-            return new FormatoImagem("image/jpeg", "jpg");
-        }
-
-        throw new RegraNegocioException(
-                "A assinatura deve ser uma imagem PNG ou JPEG válida"
-        );
-    }
-
-    private String criarStorageKey(Long movimentacaoId, String extensao) {
-        return "movimentacoes/" + movimentacaoId
-                + "/assinatura/" + UUID.randomUUID() + "." + extensao;
-    }
-
     private String normalizarNomeArquivo(String nomeOriginal, String extensao) {
         if (nomeOriginal == null || nomeOriginal.isBlank()) {
-            return "assinatura." + extensao;
+            return "evidencia." + extensao;
         }
 
         String caminhoNormalizado = nomeOriginal.replace('\\', '/');
@@ -225,7 +206,7 @@ public class EvidenciaMovimentacaoService {
                 .trim();
 
         if (nome.isBlank()) {
-            return "assinatura." + extensao;
+            return "evidencia." + extensao;
         }
         return nome.substring(0, Math.min(nome.length(), 255));
     }
@@ -299,8 +280,12 @@ public class EvidenciaMovimentacaoService {
                 new TransactionSynchronization() {
                     @Override
                     public void afterCompletion(int status) {
-                        if (status != STATUS_COMMITTED) {
+                        if (status == STATUS_ROLLED_BACK) {
                             removerSilenciosamente(storageKey);
+                        } else if (status == STATUS_UNKNOWN) {
+                            // Keep the evidence when the commit outcome is unknown:
+                            // deleting it could break an already committed movement.
+                            log.warn("Resultado transacional desconhecido; evidência preservada: {}", storageKey);
                         }
                     }
                 }
@@ -310,8 +295,8 @@ public class EvidenciaMovimentacaoService {
     private void removerSilenciosamente(String storageKey) {
         try {
             storage.remover(storageKey);
-        } catch (RuntimeException ignored) {
-            // A exceção transacional original não deve ser ocultada.
+        } catch (RuntimeException exception) {
+            log.warn("Não foi possível remover evidência após rollback: {}", storageKey, exception);
         }
     }
 
@@ -319,9 +304,6 @@ public class EvidenciaMovimentacaoService {
         return new RecursoNaoEncontradoException(
                 "Movimentação com ID " + id + " não encontrada"
         );
-    }
-
-    private record FormatoImagem(String contentType, String extensao) {
     }
 
     public record ArquivoEvidencia(

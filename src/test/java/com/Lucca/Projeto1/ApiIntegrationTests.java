@@ -13,6 +13,8 @@ import com.Lucca.Projeto1.repository.FuncionarioRepository;
 import com.Lucca.Projeto1.repository.MaterialRepository;
 import com.Lucca.Projeto1.repository.MovimentacaoRepository;
 import com.Lucca.Projeto1.repository.UsuarioRepository;
+import com.Lucca.Projeto1.repository.EvidenciaMovimentacaoRepository;
+import com.Lucca.Projeto1.repository.ComprovanteMovimentacaoRepository;
 import com.Lucca.Projeto1.service.MovimentacaoService;
 import com.Lucca.Projeto1.service.UsuarioService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -39,6 +41,7 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static com.Lucca.Projeto1.ImagemEvidenciaTestSupport.movimentacaoAssinada;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -76,6 +79,12 @@ class ApiIntegrationTests {
     private MovimentacaoRepository movimentacaoRepository;
 
     @Autowired
+    private EvidenciaMovimentacaoRepository evidenciaRepository;
+
+    @Autowired
+    private ComprovanteMovimentacaoRepository comprovanteRepository;
+
+    @Autowired
     private UsuarioRepository usuarioRepository;
 
     @Autowired
@@ -87,6 +96,8 @@ class ApiIntegrationTests {
 
     @BeforeEach
     void prepararBanco() throws Exception {
+        evidenciaRepository.deleteAll();
+        comprovanteRepository.deleteAll();
         movimentacaoRepository.deleteAll();
         funcionarioRepository.deleteAll();
         contratoRepository.deleteAll();
@@ -907,16 +918,14 @@ class ApiIntegrationTests {
             TipoMovimentacao tipo,
             int quantidade
     ) throws Exception {
-        return mockMvc.perform(post("/movimentacoes")
-                .header(HttpHeaders.AUTHORIZATION, bearer(token))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(json(Map.of(
+        return mockMvc.perform(movimentacaoAssinada(json(Map.of(
                         "funcionarioId", contexto.funcionario().getId(),
                         "contratoId", contexto.contrato().getId(),
                         "materialId", contexto.material().getId(),
                         "quantidade", quantidade,
                         "tipo", tipo.name()
-                ))));
+                )))
+                .header(HttpHeaders.AUTHORIZATION, bearer(token)));
     }
 
     private int registrarMovimentacaoStatus(

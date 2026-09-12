@@ -37,12 +37,12 @@ public class MovimentacaoController {
         this.evidenciaService = evidenciaService;
     }
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<MovimentacaoResponse> registrar(
             @Valid @RequestBody MovimentacaoRequest request
     ) {
         MovimentacaoResponse response =
-                movimentacaoService.registrarMovimentacao(request);
+                movimentacaoService.registrarMovimentacao(request, null, null);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -60,6 +60,16 @@ public class MovimentacaoController {
     public ResponseEntity<MovimentacaoResponse> listarPorId(@PathVariable Long id){
         return ResponseEntity.ok(
                 movimentacaoService.listarPorId(id));
+    }
+
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<MovimentacaoResponse> registrarComEvidencias(
+            @Valid @RequestPart("movimentacao") MovimentacaoRequest request,
+            @RequestPart("assinatura") MultipartFile assinatura,
+            @RequestPart(value = "foto", required = false) MultipartFile foto
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(movimentacaoService.registrarMovimentacao(request, assinatura, foto));
     }
 
     @GetMapping("/{id}/comprovante")
