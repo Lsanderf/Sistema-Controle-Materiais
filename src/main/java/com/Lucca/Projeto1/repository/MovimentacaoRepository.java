@@ -53,4 +53,15 @@ public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long
             List<Long> notaFiscalIds
     );
 
+    @EntityGraph(attributePaths = {
+            "material",
+            "registradoPor",
+            "funcionario",
+            "contrato",
+            "notaFiscal"
+    })
+    Optional<Movimentacao> findByRegistradoPorIdAndIdempotencyKey(
+            Long usuarioId,
+            String idempotencyKey
+    );
 }

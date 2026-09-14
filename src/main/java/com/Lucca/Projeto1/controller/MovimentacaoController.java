@@ -39,10 +39,19 @@ public class MovimentacaoController {
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<MovimentacaoResponse> registrar(
-            @Valid @RequestBody MovimentacaoRequest request
+            @Valid @RequestBody MovimentacaoRequest request,
+            @RequestHeader(
+                    value = "Idempotency-Key",
+                    required = false
+            ) String idempotencyKey
     ) {
         MovimentacaoResponse response =
-                movimentacaoService.registrarMovimentacao(request, null, null);
+                movimentacaoService.registrarMovimentacao(
+                        request,
+                        null,
+                        null,
+                        idempotencyKey
+                );
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -66,10 +75,21 @@ public class MovimentacaoController {
     public ResponseEntity<MovimentacaoResponse> registrarComEvidencias(
             @Valid @RequestPart("movimentacao") MovimentacaoRequest request,
             @RequestPart("assinatura") MultipartFile assinatura,
-            @RequestPart(value = "foto", required = false) MultipartFile foto
+            @RequestPart(value = "foto", required = false) MultipartFile foto,
+            @RequestHeader(
+                    value = "Idempotency-Key",
+                    required = false
+            ) String idempotencyKey
     ) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(movimentacaoService.registrarMovimentacao(request, assinatura, foto));
+                .body(
+                        movimentacaoService.registrarMovimentacao(
+                                request,
+                                assinatura,
+                                foto,
+                                idempotencyKey
+                        )
+                );
     }
 
     @GetMapping("/{id}/comprovante")

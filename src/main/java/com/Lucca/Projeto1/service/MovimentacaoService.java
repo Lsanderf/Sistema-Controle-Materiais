@@ -18,6 +18,12 @@ import com.Lucca.Projeto1.repository.MovimentacaoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
+import java.util.Objects;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -60,8 +66,12 @@ public class MovimentacaoService {
     public MovimentacaoResponse registrarMovimentacao(
             MovimentacaoRequest request,
             MultipartFile assinatura,
-            MultipartFile foto
+            MultipartFile foto,
+            String idempotencyKey
     ) {
+        String chaveIdempotencia =
+                normalizarIdempotencyKey(idempotencyKey);
+
         validarQuantidade(request.getQuantidade());
         validarTipoMovimentacaoComum(request.getTipo());
         if (foto != null && request.getTipo() != TipoMovimentacao.DEVOLUCAO) {
@@ -70,6 +80,25 @@ public class MovimentacaoService {
         var assinaturaValidada = imagemValidator.validar(assinatura, true);
         var fotoValidada = foto == null ? null : imagemValidator.validar(foto, false);
         Usuario usuarioAutenticado = usuarioAutenticadoService.obter();
+
+        String requestFingerprint =
+                chaveIdempotencia == null
+                        ? null
+                        : calcularFingerprint(
+                        request,
+                        assinaturaValidada,
+                        fotoValidada
+                );
+        MovimentacaoResponse repetida =
+                buscarOperacaoIdempotente(
+                        usuarioAutenticado,
+                        chaveIdempotencia,
+                        requestFingerprint
+                );
+
+        if (repetida != null) {
+            return repetida;
+        }
 
         Funcionario funcionario = funcionarioRepository
                 .findById(request.getFuncionarioId())
@@ -100,6 +129,18 @@ public class MovimentacaoService {
         }
 
         Material material = buscarMaterialComBloqueio(request.getMaterialId());
+
+        repetida =
+                buscarOperacaoIdempotente(
+                        usuarioAutenticado,
+                        chaveIdempotencia,
+                        requestFingerprint
+                );
+
+        if (repetida != null) {
+            return repetida;
+        }
+
         int estoqueAtual = estoqueAtual(material);
 
         if (request.getTipo() == TipoMovimentacao.RETIRADA) {
@@ -142,6 +183,8 @@ public class MovimentacaoService {
         movimentacao.setObservacao(normalizarObservacao(request.getObservacao()));
         movimentacao.setRegistradoPor(usuarioAutenticado);
         movimentacao.setNotaFiscal(null);
+        movimentacao.setIdempotencyKey(chaveIdempotencia);
+        movimentacao.setRequestFingerprint(requestFingerprint);
 
         Movimentacao movimentacaoSalva =
                 movimentacaoRepository.saveAndFlush(movimentacao);
@@ -212,6 +255,8 @@ public class MovimentacaoService {
                         )
                 );
     }
+
+
 
     private void validarQuantidade(Integer quantidade) {
         if (quantidade == null || quantidade <= 0) {
@@ -301,6 +346,184 @@ public class MovimentacaoService {
             return null;
         }
         return observacao.trim();
+    }
+
+
+    private MovimentacaoResponse buscarOperacaoIdempotente(
+            Usuario usuario,
+            String idempotencyKey,
+            String requestFingerprint
+    ) {
+        if (idempotencyKey == null) {
+            return null;
+        }
+
+        return movimentacaoRepository
+                .findByRegistradoPorIdAndIdempotencyKey(
+                        usuario.getId(),
+                        idempotencyKey
+                )
+                .map(movimentacaoExistente -> {
+
+                    if (!Objects.equals(
+                            movimentacaoExistente.getRequestFingerprint(),
+                            requestFingerprint
+                    )) {
+                        throw new RegraNegocioException(
+                                "A chave de idempotência já foi utilizada em outra operação"
+                        );
+                    }
+
+                    return MovimentacaoMapper
+                            .paraResponse(movimentacaoExistente);
+                })
+                .orElse(null);
+    }
+
+    private String normalizarIdempotencyKey(
+            String idempotencyKey
+    ) {
+        if (idempotencyKey == null
+                || idempotencyKey.isBlank()) {
+            return null;
+        }
+
+        String normalizada =
+                idempotencyKey.trim();
+
+        if (normalizada.length() > 100) {
+            throw new RegraNegocioException(
+                    "Idempotency-Key excede o tamanho máximo permitido"
+            );
+        }
+
+        if (!normalizada.matches(
+                "[A-Za-z0-9._:-]+"
+        )) {
+            throw new RegraNegocioException(
+                    "Idempotency-Key inválida"
+            );
+        }
+
+        return normalizada;
+    }
+
+    private String calcularFingerprint(
+            MovimentacaoRequest request,
+            ImagemEvidenciaValidator.ImagemValidada assinatura,
+            ImagemEvidenciaValidator.ImagemValidada foto
+    ) {
+        MessageDigest digest = novoSha256();
+
+        atualizarFingerprint(
+                digest,
+                request.getFuncionarioId()
+        );
+
+        atualizarFingerprint(
+                digest,
+                request.getContratoId()
+        );
+
+        atualizarFingerprint(
+                digest,
+                request.getMaterialId()
+        );
+
+        atualizarFingerprint(
+                digest,
+                request.getQuantidade()
+        );
+
+        atualizarFingerprint(
+                digest,
+                request.getTipo()
+        );
+
+        atualizarFingerprint(
+                digest,
+                normalizarObservacao(
+                        request.getObservacao()
+                )
+        );
+
+        atualizarFingerprint(
+                digest,
+                assinatura == null
+                        ? null
+                        : assinatura.conteudo()
+        );
+
+        atualizarFingerprint(
+                digest,
+                foto == null
+                        ? null
+                        : foto.conteudo()
+        );
+
+        return HexFormat.of()
+                .formatHex(digest.digest());
+    }
+
+    private void atualizarFingerprint(
+            MessageDigest digest,
+            Object valor
+    ) {
+        if (valor == null) {
+            digest.update(
+                    ByteBuffer
+                            .allocate(Integer.BYTES)
+                            .putInt(-1)
+                            .array()
+            );
+            return;
+        }
+
+        byte[] bytes =
+                String.valueOf(valor)
+                        .getBytes(StandardCharsets.UTF_8);
+
+        atualizarFingerprint(
+                digest,
+                bytes
+        );
+    }
+
+    private void atualizarFingerprint(
+            MessageDigest digest,
+            byte[] bytes
+    ) {
+        if (bytes == null) {
+            digest.update(
+                    ByteBuffer
+                            .allocate(Integer.BYTES)
+                            .putInt(-1)
+                            .array()
+            );
+            return;
+        }
+
+        digest.update(
+                ByteBuffer
+                        .allocate(Integer.BYTES)
+                        .putInt(bytes.length)
+                        .array()
+        );
+
+        digest.update(bytes);
+    }
+
+    private MessageDigest novoSha256() {
+        try {
+            return MessageDigest.getInstance(
+                    "SHA-256"
+            );
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException(
+                    "SHA-256 não está disponível",
+                    exception
+            );
+        }
     }
 
 }

@@ -341,6 +341,51 @@ class ApiIntegrationTests {
     }
 
     @Test
+    void retiradaComQuantidadeZeroERejeitadaENaoAlteraBanco() throws Exception {
+        // ARRANGE
+        ContextoMovimentacao contexto = criarContextoMovimentacao(10);
+
+        // ACT
+        registrarMovimentacao(
+                operadorToken,
+                contexto,
+                TipoMovimentacao.RETIRADA,
+                0
+        ).andExpect(status().isBadRequest());
+
+        // ASSERT
+        assertEquals(
+                10,
+                materialRepository.findById(contexto.material().getId())
+                        .orElseThrow()
+                        .getQuantidadeEstoque()
+        );
+
+        assertTrue(movimentacaoRepository.findAll().isEmpty());
+    }
+
+    @Test
+    void retiradaComQuantidadeNegativaERejeitadaENaoAlteraBanco() throws Exception {
+        ContextoMovimentacao contexto = criarContextoMovimentacao(10);
+
+        registrarMovimentacao(
+                operadorToken,
+                contexto,
+                TipoMovimentacao.RETIRADA,
+                -1
+        ).andExpect(status().isBadRequest());
+
+        assertEquals(
+                10,
+                materialRepository.findById(contexto.material().getId())
+                        .orElseThrow()
+                        .getQuantidadeEstoque()
+        );
+
+        assertTrue(movimentacaoRepository.findAll().isEmpty());
+    }
+
+    @Test
     void devolucaoValidaAumentaEstoque() throws Exception {
         ContextoMovimentacao contexto = criarContextoMovimentacao(10);
         registrarMovimentacao(
@@ -366,6 +411,27 @@ class ApiIntegrationTests {
                         .orElseThrow()
                         .getQuantidadeEstoque()
         );
+    }
+
+    @Test
+    void devolucaoSemRetiradaAnteriorERejeitadaENaoAlteraBanco() throws Exception {
+        ContextoMovimentacao contexto = criarContextoMovimentacao(10);
+
+        registrarMovimentacao(
+                operadorToken,
+                contexto,
+                TipoMovimentacao.DEVOLUCAO,
+                1
+        ).andExpect(status().isConflict());
+
+        assertEquals(
+                10,
+                materialRepository.findById(contexto.material().getId())
+                        .orElseThrow()
+                        .getQuantidadeEstoque()
+        );
+
+        assertTrue(movimentacaoRepository.findAll().isEmpty());
     }
 
     @Test
@@ -1037,4 +1103,90 @@ class ApiIntegrationTests {
             Material material
     ) {
     }
+    @Test
+    void retiradaValidaCriaExatamenteUmaMovimentacao() throws Exception {
+        // ARRANGE
+        ContextoMovimentacao contexto = criarContextoMovimentacao(10);
+
+        // ACT
+        registrarMovimentacao(
+                operadorToken,
+                contexto,
+                TipoMovimentacao.RETIRADA,
+                4
+        ).andExpect(status().isCreated());
+
+        // ASSERT
+        assertEquals(6, estoque(contexto.material()));
+
+        List<Movimentacao> movimentacoes = movimentacaoRepository.findAll();
+
+        assertEquals(1, movimentacoes.size());
+
+        Movimentacao movimentacao = movimentacoes.get(0);
+
+        assertEquals(TipoMovimentacao.RETIRADA, movimentacao.getTipo());
+        assertEquals(4, movimentacao.getQuantidade());
+        assertEquals(
+                contexto.material().getId(),
+                movimentacao.getMaterial().getId()
+        );
+    }
+
+    @Test
+    void retiradaValidaCriaComprovanteEEvidencia() throws Exception {
+        ContextoMovimentacao contexto = criarContextoMovimentacao(10);
+
+        registrarMovimentacao(
+                operadorToken,
+                contexto,
+                TipoMovimentacao.RETIRADA,
+                2
+        ).andExpect(status().isCreated());
+
+        assertEquals(8, estoque(contexto.material()));
+
+        assertEquals(1, movimentacaoRepository.count());
+        assertEquals(1, comprovanteRepository.count());
+        assertEquals(1, evidenciaRepository.count());
+    }
+
+    @Test
+    void retiradaInvalidaNaoCriaMovimentacaoComprovanteNemEvidencia()
+            throws Exception {
+
+        ContextoMovimentacao contexto = criarContextoMovimentacao(5);
+
+        registrarMovimentacao(
+                operadorToken,
+                contexto,
+                TipoMovimentacao.RETIRADA,
+                10
+        ).andExpect(status().isConflict());
+
+        assertEquals(5, estoque(contexto.material()));
+
+        assertEquals(0, movimentacaoRepository.count());
+        assertEquals(0, comprovanteRepository.count());
+        assertEquals(0, evidenciaRepository.count());
+    }
+
+    @Test
+    void tentativaDeMovimentacaoPorConsultaNaoAlteraNada() throws Exception {
+        ContextoMovimentacao contexto = criarContextoMovimentacao(10);
+
+        registrarMovimentacao(
+                consultaToken,
+                contexto,
+                TipoMovimentacao.RETIRADA,
+                3
+        ).andExpect(status().isForbidden());
+
+        assertEquals(10, estoque(contexto.material()));
+
+        assertEquals(0, movimentacaoRepository.count());
+        assertEquals(0, comprovanteRepository.count());
+        assertEquals(0, evidenciaRepository.count());
+    }
 }
+

@@ -7,7 +7,18 @@ import java.time.LocalDateTime;
 
 @Entity
 @Immutable
-@Table(name = "tb_movimentacoes")
+@Table(
+        name = "tb_movimentacoes",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_movimentacao_usuario_idempotency",
+                        columnNames = {
+                                "usuario_id",
+                                "idempotency_key"
+                        }
+                )
+        }
+)
 public class Movimentacao {
 
     @Id
@@ -51,6 +62,20 @@ public class Movimentacao {
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(name = "nota_fiscal_id", nullable = true, updatable = false)
     private NotaFiscalEntrada notaFiscal;
+
+    @Column(
+            name = "idempotency_key",
+            length = 100,
+            updatable = false
+    )
+    private String idempotencyKey;
+
+    @Column(
+            name = "request_fingerprint",
+            length = 64,
+            updatable = false
+    )
+    private String requestFingerprint;
 
     public Movimentacao() {
     }
@@ -147,5 +172,21 @@ public class Movimentacao {
 
     public void setNotaFiscal(NotaFiscalEntrada notaFiscal) {
         this.notaFiscal = notaFiscal;
+    }
+
+    public String getIdempotencyKey() {
+        return idempotencyKey;
+    }
+
+    public void setIdempotencyKey(String idempotencyKey) {
+        this.idempotencyKey = idempotencyKey;
+    }
+
+    public String getRequestFingerprint() {
+        return requestFingerprint;
+    }
+
+    public void setRequestFingerprint(String requestFingerprint) {
+        this.requestFingerprint = requestFingerprint;
     }
 }
