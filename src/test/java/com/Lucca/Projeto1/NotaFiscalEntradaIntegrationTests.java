@@ -14,6 +14,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -104,10 +106,12 @@ class NotaFiscalEntradaIntegrationTests {
         consultaToken = token("consulta", SENHA_CONSULTA);
     }
 
-    @Test
-    void materialCriadoPelaApiSoRecebeEstoqueAoConfirmarNota() throws Exception {
+    @ParameterizedTest
+    @EnumSource(value = Role.class, names = {"ADMIN", "OPERADOR"})
+    void materialCriadoPelaApiSoRecebeEstoqueAoConfirmarNota(Role role) throws Exception {
+        String authToken = role == Role.ADMIN ? adminToken : operadorToken;
         MvcResult cadastro = mockMvc.perform(post("/materiais")
-                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(authToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
                                 "nome", "CABO OPTICO DROP 1FO",
@@ -122,21 +126,21 @@ class NotaFiscalEntradaIntegrationTests {
         assertEquals(0, notaFiscalRepository.count());
 
         Long notaId = id(criarNota(
-                adminToken,
+                authToken,
                 chave(80),
                 List.of(item(material.getId(), 120, "2.50"))
         ));
         assertEquals(0, estoque(material));
         assertEquals(0, movimentacaoRepository.count());
 
-        confirmar(notaId, adminToken);
+        confirmar(notaId, authToken);
         assertEquals(120, estoque(material));
         assertEquals(1, movimentacaoRepository.count());
         assertEquals(TipoMovimentacao.ENTRADA,
                 movimentacaoRepository.findAll().getFirst().getTipo());
 
         mockMvc.perform(post("/notas-fiscais/{id}/confirmar", notaId)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(authToken)))
                 .andExpect(status().isConflict());
         assertEquals(120, estoque(material));
         assertEquals(1, movimentacaoRepository.count());

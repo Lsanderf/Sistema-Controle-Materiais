@@ -112,6 +112,8 @@ public class SecurityConfig {
                         .hasAnyRole("ADMIN", "OPERADOR")
                         .requestMatchers(HttpMethod.PUT, "/notas-fiscais/*")
                         .hasAnyRole("ADMIN", "OPERADOR")
+                        .requestMatchers(HttpMethod.POST, "/materiais")
+                        .hasAnyRole("ADMIN", "OPERADOR")
                         .requestMatchers("/materiais", "/materiais/**")
                         .hasRole("ADMIN")
                         .requestMatchers("/funcionarios", "/funcionarios/**")
