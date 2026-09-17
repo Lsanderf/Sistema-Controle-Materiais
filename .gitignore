@@ -1,4 +1,5 @@
 HELP.md
+.agents
 .gitignore
 target/
 .mvn/wrapper/maven-wrapper.jar
@@ -33,6 +34,7 @@ build/
 !**/src/test/**/build/
 
 ### VS Code ###
+docker-compose.yml
 .vscode/
 data/
 .env
