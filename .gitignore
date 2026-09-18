@@ -5,6 +5,8 @@ target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
+.DS_Store
+Thumbs.db
 
 scr/test/
 ### STS ###
@@ -30,11 +32,11 @@ scr/test/
 /nbdist/
 /.nb-gradle/
 build/
+
 !**/src/main/**/build/
 !**/src/test/**/build/
 
 ### VS Code ###
-docker-compose.yml
 .vscode/
 data/
 .env
