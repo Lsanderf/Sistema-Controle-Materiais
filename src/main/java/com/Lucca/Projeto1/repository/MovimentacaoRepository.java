@@ -10,6 +10,7 @@ import jakarta.persistence.LockModeType;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Collection;
 
 
 public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long> {
@@ -28,7 +29,8 @@ public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long
             "registradoPor",
             "funcionario",
             "contrato",
-            "notaFiscal"
+            "notaFiscal",
+            "movimentacaoOrigem"
     })
     @Query("SELECT movimentacao FROM Movimentacao movimentacao WHERE movimentacao.id = :id")
     Optional<Movimentacao> findByIdComBloqueio(@Param("id") Long id);
@@ -38,7 +40,8 @@ public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long
             "registradoPor",
             "funcionario",
             "contrato",
-            "notaFiscal"
+            "notaFiscal",
+            "movimentacaoOrigem"
     })
     List<Movimentacao> findByNotaFiscalIdOrderByIdAsc(Long notaFiscalId);
 
@@ -47,7 +50,8 @@ public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long
             "registradoPor",
             "funcionario",
             "contrato",
-            "notaFiscal"
+            "notaFiscal",
+            "movimentacaoOrigem"
     })
     List<Movimentacao> findByNotaFiscalIdInOrderByNotaFiscalIdAscIdAsc(
             List<Long> notaFiscalIds
@@ -58,10 +62,25 @@ public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long
             "registradoPor",
             "funcionario",
             "contrato",
-            "notaFiscal"
+            "notaFiscal",
+            "movimentacaoOrigem"
     })
     Optional<Movimentacao> findByRegistradoPorIdAndIdempotencyKey(
             Long usuarioId,
             String idempotencyKey
+    );
+
+    @EntityGraph(attributePaths = {
+            "material",
+            "registradoPor",
+            "funcionario",
+            "contrato",
+            "notaFiscal",
+            "movimentacaoOrigem"
+    })
+    Optional<Movimentacao> findByMovimentacaoOrigemId(Long movimentacaoOrigemId);
+
+    List<Movimentacao> findByMovimentacaoOrigemIdIn(
+            Collection<Long> movimentacaoOrigemIds
     );
 }

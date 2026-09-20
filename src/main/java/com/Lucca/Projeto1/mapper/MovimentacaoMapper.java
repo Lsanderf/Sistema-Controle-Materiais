@@ -14,6 +14,13 @@ public class MovimentacaoMapper {
     public static MovimentacaoResponse paraResponse(
             Movimentacao movimentacao
     ) {
+        return paraResponse(movimentacao, null);
+    }
+
+    public static MovimentacaoResponse paraResponse(
+            Movimentacao movimentacao,
+            Long estornoId
+    ) {
         String nomeFuncionario =
                 movimentacao.getFuncionario() != null
                         ? movimentacao.getFuncionario().getNome()
@@ -44,6 +51,11 @@ public class MovimentacaoMapper {
                         ? movimentacao.getNotaFiscal().getId()
                         : null;
 
+        Long movimentacaoOrigemId =
+                movimentacao.getMovimentacaoOrigem() != null
+                        ? movimentacao.getMovimentacaoOrigem().getId()
+                        : null;
+
         return new MovimentacaoResponse(
                 movimentacao.getId(),
                 nomeFuncionario,
@@ -56,7 +68,9 @@ public class MovimentacaoMapper {
                 usuarioId,
                 usuarioUsername,
                 notaFiscalId,
-                movimentacao.getObservacao()
+                movimentacao.getObservacao(),
+                movimentacaoOrigemId,
+                estornoId
         );
     }
 }

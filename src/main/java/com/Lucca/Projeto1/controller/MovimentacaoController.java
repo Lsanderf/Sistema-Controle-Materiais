@@ -1,6 +1,7 @@
 package com.Lucca.Projeto1.controller;
 
 import com.Lucca.Projeto1.dto.movimentacao.MovimentacaoRequest;
+import com.Lucca.Projeto1.dto.movimentacao.EstornoMovimentacaoRequest;
 import com.Lucca.Projeto1.dto.movimentacao.ComprovanteMovimentacaoResponse;
 import com.Lucca.Projeto1.dto.movimentacao.EvidenciaMovimentacaoResponse;
 import com.Lucca.Projeto1.service.ComprovanteMovimentacaoService;
@@ -69,6 +70,20 @@ public class MovimentacaoController {
     public ResponseEntity<MovimentacaoResponse> listarPorId(@PathVariable Long id){
         return ResponseEntity.ok(
                 movimentacaoService.listarPorId(id));
+    }
+
+    @PostMapping("/{id}/estorno")
+    public ResponseEntity<MovimentacaoResponse> estornar(
+            @PathVariable Long id,
+            @Valid @RequestBody EstornoMovimentacaoRequest request,
+            @RequestHeader(
+                    value = "Idempotency-Key",
+                    required = false
+            ) String idempotencyKey
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(movimentacaoService.estornar(id, request, idempotencyKey));
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

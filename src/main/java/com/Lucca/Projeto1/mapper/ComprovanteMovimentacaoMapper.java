@@ -71,6 +71,7 @@ public final class ComprovanteMovimentacaoMapper {
                 contrato,
                 registradoPor,
                 notaFiscal,
+                comprovante.getMovimentacaoOrigemId(),
                 evidencias,
                 comprovante.getGeradoEm(),
                 comprovante.getVersao()

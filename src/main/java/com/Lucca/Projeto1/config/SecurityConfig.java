@@ -129,6 +129,11 @@ public class SecurityConfig {
                         .hasAnyRole("ADMIN", "OPERADOR", "CONSULTA")
                         .requestMatchers(
                                 HttpMethod.POST,
+                                "/movimentacoes/*/estorno"
+                        )
+                        .hasRole("ADMIN")
+                        .requestMatchers(
+                                HttpMethod.POST,
                                 "/movimentacoes"
                         )
                         .hasAnyRole("ADMIN", "OPERADOR")

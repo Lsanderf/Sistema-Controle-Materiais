@@ -2,6 +2,7 @@ package com.Lucca.Projeto1.service;
 
 import com.Lucca.Projeto1.dto.movimentacao.MovimentacaoRequest;
 import com.Lucca.Projeto1.dto.movimentacao.MovimentacaoResponse;
+import com.Lucca.Projeto1.dto.movimentacao.EstornoMovimentacaoRequest;
 import com.Lucca.Projeto1.exception.RecursoNaoEncontradoException;
 import com.Lucca.Projeto1.exception.RegraNegocioException;
 import com.Lucca.Projeto1.mapper.MovimentacaoMapper;
@@ -23,7 +24,9 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -108,9 +111,10 @@ public class MovimentacaoService {
                         )
                 );
 
-        if (!funcionario.isAtivo()) {
+        if (request.getTipo() == TipoMovimentacao.RETIRADA
+                && !Boolean.TRUE.equals(funcionario.isAtivo())) {
             throw new RegraNegocioException(
-                    "Não é possível registrar movimentações para um funcionário inativo"
+                    "Não é possível registrar retirada para um funcionário inativo"
             );
         }
 
@@ -122,9 +126,10 @@ public class MovimentacaoService {
                         )
                 );
 
-        if (!Boolean.TRUE.equals(contrato.getAtivo())) {
+        if (request.getTipo() == TipoMovimentacao.RETIRADA
+                && !Boolean.TRUE.equals(contrato.getAtivo())) {
             throw new RegraNegocioException(
-                    "Não é possível registrar movimentações em um contrato inativo"
+                    "Não é possível registrar retirada em um contrato inativo"
             );
         }
 
@@ -195,18 +200,101 @@ public class MovimentacaoService {
         return MovimentacaoMapper.paraResponse(movimentacaoSalva);
     }
 
+    @Transactional
+    public MovimentacaoResponse estornar(
+            Long movimentacaoOrigemId,
+            EstornoMovimentacaoRequest request,
+            String idempotencyKey
+    ) {
+        String justificativa = normalizarJustificativa(request.getJustificativa());
+        String chaveIdempotencia = normalizarIdempotencyKey(idempotencyKey);
+        Usuario usuarioAutenticado = usuarioAutenticadoService.obter();
+        String requestFingerprint = chaveIdempotencia == null
+                ? null
+                : calcularFingerprintEstorno(movimentacaoOrigemId, justificativa);
+
+        MovimentacaoResponse repetida = buscarOperacaoIdempotente(
+                usuarioAutenticado,
+                chaveIdempotencia,
+                requestFingerprint
+        );
+        if (repetida != null) {
+            return repetida;
+        }
+
+        Movimentacao origem = movimentacaoRepository
+                .findByIdComBloqueio(movimentacaoOrigemId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Movimentação não encontrada"
+                ));
+
+        repetida = buscarOperacaoIdempotente(
+                usuarioAutenticado,
+                chaveIdempotencia,
+                requestFingerprint
+        );
+        if (repetida != null) {
+            return repetida;
+        }
+
+        TipoMovimentacao tipoEstorno = tipoEstornoPara(origem.getTipo());
+        if (movimentacaoRepository
+                .findByMovimentacaoOrigemId(movimentacaoOrigemId)
+                .isPresent()) {
+            throw new RegraNegocioException(
+                    "A movimentação já foi estornada"
+            );
+        }
+
+        Material material = buscarMaterialComBloqueio(origem.getMaterial().getId());
+        int estoqueAtual = estoqueAtual(material);
+
+        if (tipoEstorno == TipoMovimentacao.ESTORNO_RETIRADA) {
+            material.setQuantidadeEstoque(
+                    somarEstoque(estoqueAtual, origem.getQuantidade())
+            );
+        } else {
+            if (estoqueAtual < origem.getQuantidade()) {
+                throw new RegraNegocioException(
+                        "Estoque insuficiente para estornar a devolução"
+                );
+            }
+            material.setQuantidadeEstoque(
+                    estoqueAtual - origem.getQuantidade()
+            );
+        }
+
+        Movimentacao estorno = new Movimentacao();
+        estorno.setFuncionario(origem.getFuncionario());
+        estorno.setContrato(origem.getContrato());
+        estorno.setMaterial(material);
+        estorno.setQuantidade(origem.getQuantidade());
+        estorno.setTipo(tipoEstorno);
+        LocalDateTime agora = LocalDateTime.now();
+        estorno.setDataMovimentacao(agora);
+        estorno.setDataFinalizacao(agora);
+        estorno.setObservacao(justificativa);
+        estorno.setRegistradoPor(usuarioAutenticado);
+        estorno.setNotaFiscal(null);
+        estorno.setMovimentacaoOrigem(origem);
+        estorno.setIdempotencyKey(chaveIdempotencia);
+        estorno.setRequestFingerprint(requestFingerprint);
+
+        Movimentacao estornoSalvo = movimentacaoRepository.saveAndFlush(estorno);
+        comprovanteService.registrar(estornoSalvo);
+
+        return MovimentacaoMapper.paraResponse(estornoSalvo);
+    }
+
     @Transactional(readOnly = true)
     public List<MovimentacaoResponse> listarTodas() {
-        return movimentacaoRepository.findAll()
-                .stream()
-                .map(MovimentacaoMapper::paraResponse)
-                .toList();
+        return mapearComSituacaoEstorno(movimentacaoRepository.findAll());
     }
 
     @Transactional(readOnly = true)
     public MovimentacaoResponse listarPorId(Long id) {
         return movimentacaoRepository.findById(id)
-                .map(MovimentacaoMapper::paraResponse)
+                .map(this::mapearComSituacaoEstorno)
                 .orElseThrow(() ->
                         new RecursoNaoEncontradoException(
                                 "Movimentação não encontrada"
@@ -218,33 +306,27 @@ public class MovimentacaoService {
     public List<MovimentacaoResponse> listarPorFuncionario(
             Long funcionarioId
     ) {
-        return movimentacaoRepository
-                .findByFuncionarioId(funcionarioId)
-                .stream()
-                .map(MovimentacaoMapper::paraResponse)
-                .toList();
+        return mapearComSituacaoEstorno(
+                movimentacaoRepository.findByFuncionarioId(funcionarioId)
+        );
     }
 
     @Transactional(readOnly = true)
     public List<MovimentacaoResponse> listarPorContrato(
             Long contratoId
     ) {
-        return movimentacaoRepository
-                .findByContratoId(contratoId)
-                .stream()
-                .map(MovimentacaoMapper::paraResponse)
-                .toList();
+        return mapearComSituacaoEstorno(
+                movimentacaoRepository.findByContratoId(contratoId)
+        );
     }
 
     @Transactional(readOnly = true)
     public List<MovimentacaoResponse> listarPorMaterial(
             Long materialId
     ) {
-        return movimentacaoRepository
-                .findByMaterialId(materialId)
-                .stream()
-                .map(MovimentacaoMapper::paraResponse)
-                .toList();
+        return mapearComSituacaoEstorno(
+                movimentacaoRepository.findByMaterialId(materialId)
+        );
     }
 
     private Material buscarMaterialComBloqueio(Long materialId) {
@@ -336,6 +418,12 @@ public class MovimentacaoService {
                     if (movimentacao.getTipo() == TipoMovimentacao.DEVOLUCAO) {
                         return -movimentacao.getQuantidade();
                     }
+                    if (movimentacao.getTipo() == TipoMovimentacao.ESTORNO_RETIRADA) {
+                        return -movimentacao.getQuantidade();
+                    }
+                    if (movimentacao.getTipo() == TipoMovimentacao.ESTORNO_DEVOLUCAO) {
+                        return movimentacao.getQuantidade();
+                    }
                     return 0;
                 })
                 .sum();
@@ -346,6 +434,71 @@ public class MovimentacaoService {
             return null;
         }
         return observacao.trim();
+    }
+
+    private String normalizarJustificativa(String justificativa) {
+        if (justificativa == null || justificativa.isBlank()) {
+            throw new RegraNegocioException(
+                    "A justificativa do estorno é obrigatória"
+            );
+        }
+
+        String normalizada = justificativa.trim();
+        if (normalizada.length() > 1000) {
+            throw new RegraNegocioException(
+                    "A justificativa deve possuir no máximo 1.000 caracteres"
+            );
+        }
+        return normalizada;
+    }
+
+    private TipoMovimentacao tipoEstornoPara(TipoMovimentacao tipoOrigem) {
+        return switch (tipoOrigem) {
+            case RETIRADA -> TipoMovimentacao.ESTORNO_RETIRADA;
+            case DEVOLUCAO -> TipoMovimentacao.ESTORNO_DEVOLUCAO;
+            case ENTRADA -> throw new RegraNegocioException(
+                    "Entradas de Nota Fiscal não podem ser estornadas"
+            );
+            case ESTORNO_RETIRADA, ESTORNO_DEVOLUCAO ->
+                    throw new RegraNegocioException(
+                            "Uma movimentação de estorno não pode ser estornada"
+                    );
+        };
+    }
+
+    private List<MovimentacaoResponse> mapearComSituacaoEstorno(
+            List<Movimentacao> movimentacoes
+    ) {
+        if (movimentacoes.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, Long> estornoPorOrigem = movimentacaoRepository
+                .findByMovimentacaoOrigemIdIn(
+                        movimentacoes.stream().map(Movimentacao::getId).toList()
+                )
+                .stream()
+                .collect(Collectors.toMap(
+                        movimentacao -> movimentacao.getMovimentacaoOrigem().getId(),
+                        Movimentacao::getId
+                ));
+
+        return movimentacoes.stream()
+                .map(movimentacao -> MovimentacaoMapper.paraResponse(
+                        movimentacao,
+                        estornoPorOrigem.get(movimentacao.getId())
+                ))
+                .toList();
+    }
+
+    private MovimentacaoResponse mapearComSituacaoEstorno(
+            Movimentacao movimentacao
+    ) {
+        Long estornoId = movimentacaoRepository
+                .findByMovimentacaoOrigemId(movimentacao.getId())
+                .map(Movimentacao::getId)
+                .orElse(null);
+        return MovimentacaoMapper.paraResponse(movimentacao, estornoId);
     }
 
 
@@ -463,6 +616,17 @@ public class MovimentacaoService {
 
         return HexFormat.of()
                 .formatHex(digest.digest());
+    }
+
+    private String calcularFingerprintEstorno(
+            Long movimentacaoOrigemId,
+            String justificativa
+    ) {
+        MessageDigest digest = novoSha256();
+        atualizarFingerprint(digest, "ESTORNO");
+        atualizarFingerprint(digest, movimentacaoOrigemId);
+        atualizarFingerprint(digest, justificativa);
+        return HexFormat.of().formatHex(digest.digest());
     }
 
     private void atualizarFingerprint(

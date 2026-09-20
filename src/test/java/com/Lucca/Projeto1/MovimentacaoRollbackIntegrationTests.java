@@ -29,6 +29,8 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import java.util.Map;
 import com.Lucca.Projeto1.model.Movimentacao;
+import com.Lucca.Projeto1.model.TipoMovimentacao;
+import com.Lucca.Projeto1.model.Usuario;
 import com.Lucca.Projeto1.service.ComprovanteMovimentacaoService;
 import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
@@ -37,6 +39,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static com.Lucca.Projeto1.ImagemEvidenciaTestSupport.movimentacaoAssinada;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
@@ -90,6 +93,7 @@ class MovimentacaoRollbackIntegrationTests {
     private ComprovanteMovimentacaoService comprovanteService;
 
     private String operadorToken;
+    private String adminToken;
 
     @BeforeEach
     void prepararBanco() throws Exception {
@@ -107,8 +111,73 @@ class MovimentacaoRollbackIntegrationTests {
                 Role.OPERADOR,
                 true
         );
+        usuarioService.criarUsuario(
+                "admin-estorno",
+                SENHA_OPERADOR,
+                Role.ADMIN,
+                true
+        );
 
         operadorToken = token("operador", SENHA_OPERADOR);
+        adminToken = token("admin-estorno", SENHA_OPERADOR);
+    }
+
+    @Test
+    void falhaAoGerarComprovanteDoEstornoFazRollbackCompleto()
+            throws Exception {
+        Material material = materialRepository.save(
+                new Material("Cinto", "Descrição", 6)
+        );
+        Funcionario funcionario = funcionarioRepository.save(
+                new Funcionario("Maria Silva", "52998224725", "Eletricista")
+        );
+        Contrato contrato = contratoRepository.save(
+                new Contrato("Contrato Estorno", "Descrição", true)
+        );
+        Usuario admin = usuarioRepository
+                .findByUsernameIgnoreCase("admin-estorno")
+                .orElseThrow();
+
+        Movimentacao original = new Movimentacao();
+        original.setFuncionario(funcionario);
+        original.setContrato(contrato);
+        original.setMaterial(material);
+        original.setQuantidade(4);
+        original.setTipo(TipoMovimentacao.RETIRADA);
+        original.setDataMovimentacao(java.time.LocalDateTime.now());
+        original.setDataFinalizacao(original.getDataMovimentacao());
+        original.setRegistradoPor(admin);
+        original = movimentacaoRepository.saveAndFlush(original);
+
+        doThrow(new IllegalStateException("Falha simulada no comprovante do estorno"))
+                .when(comprovanteService)
+                .registrar(any(Movimentacao.class));
+
+        mockMvc.perform(post("/movimentacoes/{id}/estorno", original.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "justificativa", "Correção administrativa"
+                        ))))
+                .andExpect(status().is5xxServerError());
+
+        assertEquals(
+                6,
+                materialRepository.findById(material.getId())
+                        .orElseThrow()
+                        .getQuantidadeEstoque()
+        );
+        assertEquals(1, movimentacaoRepository.count());
+        assertEquals(0, comprovanteRepository.count());
+        assertEquals(0, evidenciaRepository.count());
+        Movimentacao preservada = movimentacaoRepository
+                .findById(original.getId())
+                .orElseThrow();
+        assertEquals(TipoMovimentacao.RETIRADA, preservada.getTipo());
+        assertEquals(4, preservada.getQuantidade());
+        assertTrue(movimentacaoRepository
+                .findByMovimentacaoOrigemId(original.getId())
+                .isEmpty());
     }
 
     @Test

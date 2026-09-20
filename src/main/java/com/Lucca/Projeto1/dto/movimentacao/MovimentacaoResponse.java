@@ -19,6 +19,9 @@ import com.fasterxml.jackson.annotation.JsonFormat;
         private String usuarioUsername;
         private Long notaFiscalId;
         private String observacao;
+        private Long movimentacaoOrigemId;
+        private boolean estornada;
+        private Long estornoId;
 
         @JsonFormat(pattern = "dd/MM/yyyy HH:mm")
         private LocalDateTime dataMovimentacao;
@@ -41,7 +44,9 @@ import com.fasterxml.jackson.annotation.JsonFormat;
                 Long usuarioId,
                 String usuarioUsername,
                 Long notaFiscalId,
-                String observacao
+                String observacao,
+                Long movimentacaoOrigemId,
+                Long estornoId
         ) {
             this.id = id;
             this.funcionario = funcionario;
@@ -55,6 +60,9 @@ import com.fasterxml.jackson.annotation.JsonFormat;
             this.usuarioUsername = usuarioUsername;
             this.notaFiscalId = notaFiscalId;
             this.observacao = observacao;
+            this.movimentacaoOrigemId = movimentacaoOrigemId;
+            this.estornoId = estornoId;
+            this.estornada = estornoId != null;
         }
 
         public Long getId() {
@@ -103,6 +111,18 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 
         public String getObservacao() {
             return observacao;
+        }
+
+        public Long getMovimentacaoOrigemId() {
+            return movimentacaoOrigemId;
+        }
+
+        public boolean isEstornada() {
+            return estornada;
+        }
+
+        public Long getEstornoId() {
+            return estornoId;
         }
     }
 

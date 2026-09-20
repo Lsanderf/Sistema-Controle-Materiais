@@ -380,9 +380,9 @@ public class NotaFiscalEntradaService {
     }
 
     private void validarValorUnitario(BigDecimal valorUnitario) {
-        if (valorUnitario == null || valorUnitario.signum() < 0) {
+        if (valorUnitario == null || valorUnitario.signum() <= 0) {
             throw new RegraNegocioException(
-                    "O valor unitário do item não pode ser negativo"
+                    "O valor unitário do item deve ser maior que zero"
             );
         }
         if (valorUnitario.scale() > 2 || valorUnitario.precision() > 19) {

@@ -93,6 +93,9 @@ public class ComprovanteMovimentacao {
     @Column(name = "nota_fiscal_data_entrada", updatable = false)
     private LocalDateTime notaFiscalDataEntrada;
 
+    @Column(name = "movimentacao_origem_id", updatable = false)
+    private Long movimentacaoOrigemId;
+
     @Column(name = "gerado_em", nullable = false, updatable = false)
     private LocalDateTime geradoEm;
 
@@ -145,6 +148,11 @@ public class ComprovanteMovimentacao {
             notaFiscalCnpjFornecedor = notaFiscal.getCnpjFornecedor();
             notaFiscalDataEmissao = notaFiscal.getDataEmissao();
             notaFiscalDataEntrada = notaFiscal.getDataEntrada();
+        }
+
+        Movimentacao movimentacaoOrigem = movimentacao.getMovimentacaoOrigem();
+        if (movimentacaoOrigem != null) {
+            movimentacaoOrigemId = movimentacaoOrigem.getId();
         }
 
         geradoEm = LocalDateTime.now();
@@ -253,6 +261,10 @@ public class ComprovanteMovimentacao {
 
     public LocalDateTime getNotaFiscalDataEntrada() {
         return notaFiscalDataEntrada;
+    }
+
+    public Long getMovimentacaoOrigemId() {
+        return movimentacaoOrigemId;
     }
 
     public LocalDateTime getGeradoEm() {

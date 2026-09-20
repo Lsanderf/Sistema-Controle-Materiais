@@ -18,6 +18,7 @@ public record ComprovanteMovimentacaoResponse(
         ContratoResumoResponse contrato,
         UsuarioResumoResponse registradoPor,
         NotaFiscalResumoResponse notaFiscal,
+        Long movimentacaoOrigemId,
         List<EvidenciaMovimentacaoResponse> evidencias,
         LocalDateTime geradoEm,
         Integer versao

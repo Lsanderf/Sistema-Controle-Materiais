@@ -16,6 +16,10 @@ import java.time.LocalDateTime;
                                 "usuario_id",
                                 "idempotency_key"
                         }
+                ),
+                @UniqueConstraint(
+                        name = "uk_movimentacoes_origem",
+                        columnNames = "movimentacao_origem_id"
                 )
         }
 )
@@ -76,6 +80,14 @@ public class Movimentacao {
             updatable = false
     )
     private String requestFingerprint;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(
+            name = "movimentacao_origem_id",
+            nullable = true,
+            updatable = false
+    )
+    private Movimentacao movimentacaoOrigem;
 
     public Movimentacao() {
     }
@@ -188,5 +200,13 @@ public class Movimentacao {
 
     public void setRequestFingerprint(String requestFingerprint) {
         this.requestFingerprint = requestFingerprint;
+    }
+
+    public Movimentacao getMovimentacaoOrigem() {
+        return movimentacaoOrigem;
+    }
+
+    public void setMovimentacaoOrigem(Movimentacao movimentacaoOrigem) {
+        this.movimentacaoOrigem = movimentacaoOrigem;
     }
 }

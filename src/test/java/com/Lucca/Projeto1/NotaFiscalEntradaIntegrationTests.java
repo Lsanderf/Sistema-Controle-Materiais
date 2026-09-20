@@ -296,6 +296,38 @@ class NotaFiscalEntradaIntegrationTests {
     }
 
     @Test
+    void backendRecusaChaveComMenosDe44Digitos() throws Exception {
+        String chaveCurta = chave(19).substring(1);
+
+        mockMvc.perform(post("/notas-fiscais")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(notaRequest(chaveCurta, List.of()))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.erro").value(
+                        "A chave de acesso deve conter exatamente 44 dígitos"
+                ));
+
+        assertEquals(0, notaFiscalRepository.count());
+    }
+
+    @Test
+    void backendRecusaChaveComMaisDe44Digitos() throws Exception {
+        String chaveLonga = chave(20) + "0";
+
+        mockMvc.perform(post("/notas-fiscais")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(notaRequest(chaveLonga, List.of()))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.erro").value(
+                        "A chave de acesso deve conter exatamente 44 dígitos"
+                ));
+
+        assertEquals(0, notaFiscalRepository.count());
+    }
+
+    @Test
     void chaveComDvValidoContinuaNoFluxoDeCriacao() throws Exception {
         String chaveValida = "52060433009911002506550120000007800267301615";
 
@@ -362,9 +394,10 @@ class NotaFiscalEntradaIntegrationTests {
             throws Exception {
         Material luvas = criarMaterial("Luvas", 0);
         Material capacete = criarMaterial("Capacete", 7);
+        String chaveOriginal = chave(13);
         Long notaId = id(criarNota(
                 operadorToken,
-                chave(13),
+                chaveOriginal,
                 List.of(item(luvas.getId(), 10, "5.00"))
         ));
 
@@ -372,10 +405,11 @@ class NotaFiscalEntradaIntegrationTests {
                         .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(notaRequest(
-                                chave(13),
+                                formatarChave(chaveOriginal),
                                 List.of(item(capacete.getId(), 2, "40.00"))
                         ))))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.chaveAcesso").value(chaveOriginal))
                 .andExpect(jsonPath("$.itens.length()").value(1))
                 .andExpect(jsonPath("$.itens[0].materialId")
                         .value(capacete.getId()))
@@ -384,6 +418,73 @@ class NotaFiscalEntradaIntegrationTests {
         assertEquals(0, estoque(luvas));
         assertEquals(7, estoque(capacete));
         assertTrue(movimentacaoRepository.findAll().isEmpty());
+        assertEquals(
+                chaveOriginal,
+                notaFiscalRepository.findById(notaId).orElseThrow().getChaveAcesso()
+        );
+    }
+
+    @Test
+    void edicaoTentandoUsarChaveDeOutraNotaERejeitada() throws Exception {
+        String chavePrimeiraNota = chave(21);
+        String chaveSegundaNota = chave(22);
+        Long primeiraNotaId = id(criarNota(
+                adminToken,
+                chavePrimeiraNota,
+                List.of()
+        ));
+        Long segundaNotaId = id(criarNota(
+                adminToken,
+                chaveSegundaNota,
+                List.of()
+        ));
+
+        mockMvc.perform(put("/notas-fiscais/{id}", segundaNotaId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(notaRequest(
+                                formatarChave(chavePrimeiraNota),
+                                List.of()
+                        ))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.erro").value(
+                        "Já existe uma nota fiscal com essa chave de acesso"
+                ));
+
+        assertEquals(
+                chavePrimeiraNota,
+                notaFiscalRepository.findById(primeiraNotaId)
+                        .orElseThrow()
+                        .getChaveAcesso()
+        );
+        assertEquals(
+                chaveSegundaNota,
+                notaFiscalRepository.findById(segundaNotaId)
+                        .orElseThrow()
+                        .getChaveAcesso()
+        );
+    }
+
+    @Test
+    void edicaoTambemRecusaDigitoVerificadorInvalido() throws Exception {
+        String chaveOriginal = chave(23);
+        Long notaId = id(criarNota(adminToken, chaveOriginal, List.of()));
+        int dvAlterado = (Character.digit(chaveOriginal.charAt(43), 10) + 1) % 10;
+        String chaveInvalida = chaveOriginal.substring(0, 43) + dvAlterado;
+
+        mockMvc.perform(put("/notas-fiscais/{id}", notaId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(notaRequest(chaveInvalida, List.of()))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.erro").value(
+                        "Chave de acesso da NF-e inválida. Verifique os números informados."
+                ));
+
+        assertEquals(
+                chaveOriginal,
+                notaFiscalRepository.findById(notaId).orElseThrow().getChaveAcesso()
+        );
     }
 
     @Test
