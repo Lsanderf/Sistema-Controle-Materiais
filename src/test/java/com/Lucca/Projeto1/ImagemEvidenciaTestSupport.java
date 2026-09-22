@@ -42,6 +42,16 @@ final class ImagemEvidenciaTestSupport {
     }
 
     static MockMultipartHttpServletRequestBuilder movimentacaoAssinada(String json) throws IOException {
-        return multipart("/movimentacoes").file(dados(json)).file(assinatura());
+        MockMultipartHttpServletRequestBuilder request =
+                multipart("/movimentacoes").file(dados(json)).file(assinatura());
+        if (json.contains("DEVOLUCAO")) {
+            request.file(new MockMultipartFile(
+                    "foto",
+                    "devolucao.png",
+                    "image/png",
+                    imagem("png", true)
+            ));
+        }
+        return request;
     }
 }

@@ -332,7 +332,8 @@ public class NotaFiscalEntradaService {
         movimentacao.setDataMovimentacao(dataMovimentacao);
         movimentacao.setDataFinalizacao(dataMovimentacao);
         movimentacao.setObservacao(null);
-        movimentacao.setFuncionario(null);
+        movimentacao.setEncarregado(null);
+        movimentacao.setRequisicao(null);
         movimentacao.setContrato(null);
         movimentacao.setRegistradoPor(usuario);
         movimentacao.setNotaFiscal(notaFiscal);

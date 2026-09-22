@@ -33,6 +33,9 @@ public class UsuarioAdminInitializer implements ApplicationRunner {
 
         String username = environment.getProperty("APP_ADMIN_USERNAME");
         String password = environment.getProperty("APP_ADMIN_PASSWORD");
+        String nome = environment.getProperty("APP_ADMIN_NOME", "Administrador");
+        String cpf = environment.getProperty("APP_ADMIN_CPF", "52998224725");
+        String celular = environment.getProperty("APP_ADMIN_CELULAR", "31999999999");
 
         if (username == null || username.isBlank()
                 || password == null || password.isBlank()) {
@@ -40,6 +43,9 @@ public class UsuarioAdminInitializer implements ApplicationRunner {
         }
 
         usuarioService.criarUsuario(
+                nome,
+                cpf,
+                celular,
                 username,
                 password,
                 Role.ADMIN,

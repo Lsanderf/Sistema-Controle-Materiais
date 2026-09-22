@@ -10,7 +10,8 @@ import com.fasterxml.jackson.annotation.JsonFormat;
     public class MovimentacaoResponse {
 
         private Long id;
-        private String funcionario;
+        private Long encarregadoId;
+        private String encarregado;
         private String contrato;
         private String material;
         private Integer quantidade;
@@ -22,6 +23,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
         private Long movimentacaoOrigemId;
         private boolean estornada;
         private Long estornoId;
+        private Long requisicaoId;
 
         @JsonFormat(pattern = "dd/MM/yyyy HH:mm")
         private LocalDateTime dataMovimentacao;
@@ -34,7 +36,8 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 
         public MovimentacaoResponse(
                 Long id,
-                String funcionario,
+                Long encarregadoId,
+                String encarregado,
                 String contrato,
                 String material,
                 Integer quantidade,
@@ -46,10 +49,12 @@ import com.fasterxml.jackson.annotation.JsonFormat;
                 Long notaFiscalId,
                 String observacao,
                 Long movimentacaoOrigemId,
-                Long estornoId
+                Long estornoId,
+                Long requisicaoId
         ) {
             this.id = id;
-            this.funcionario = funcionario;
+            this.encarregadoId = encarregadoId;
+            this.encarregado = encarregado;
             this.contrato = contrato;
             this.material = material;
             this.quantidade = quantidade;
@@ -63,15 +68,15 @@ import com.fasterxml.jackson.annotation.JsonFormat;
             this.movimentacaoOrigemId = movimentacaoOrigemId;
             this.estornoId = estornoId;
             this.estornada = estornoId != null;
+            this.requisicaoId = requisicaoId;
         }
 
         public Long getId() {
             return id;
         }
 
-        public String getFuncionario() {
-            return funcionario;
-        }
+        public Long getEncarregadoId() { return encarregadoId; }
+        public String getEncarregado() { return encarregado; }
 
         public String getContrato() {
             return contrato;
@@ -124,5 +129,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
         public Long getEstornoId() {
             return estornoId;
         }
+
+        public Long getRequisicaoId() { return requisicaoId; }
     }
 

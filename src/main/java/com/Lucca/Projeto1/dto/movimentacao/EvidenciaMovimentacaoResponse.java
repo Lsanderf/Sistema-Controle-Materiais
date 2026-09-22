@@ -8,7 +8,8 @@ public record EvidenciaMovimentacaoResponse(
         Long id,
         TipoEvidenciaMovimentacao tipo,
         LocalDateTime dataEvidencia,
-        FuncionarioResumoResponse funcionario,
+        UsuarioResumoResponse encarregado,
+        UsuarioResumoResponse assinante,
         UsuarioResumoResponse registradaPor,
         String nomeArquivo,
         String contentType,
@@ -16,9 +17,6 @@ public record EvidenciaMovimentacaoResponse(
         String sha256,
         String urlArquivo
 ) {
-    public record FuncionarioResumoResponse(Long id, String nome) {
-    }
-
-    public record UsuarioResumoResponse(Long id, String username) {
+    public record UsuarioResumoResponse(Long id, String nome, String username) {
     }
 }

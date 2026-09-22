@@ -37,7 +37,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ImportacaoXmlNfeIntegrationTests {
 
     private static final String SENHA = "senhaOperador123";
-    private static final String SENHA_CONSULTA = "senhaConsulta123";
+    private static final String SENHA_GERENTE = "senhaGerente123";
 
     @Autowired
     private MockMvc mockMvc;
@@ -58,7 +58,7 @@ class ImportacaoXmlNfeIntegrationTests {
     private UsuarioService usuarioService;
 
     private String operadorToken;
-    private String consultaToken;
+    private String gerenteToken;
 
     @BeforeEach
     void prepararBanco() throws Exception {
@@ -66,21 +66,23 @@ class ImportacaoXmlNfeIntegrationTests {
         notaFiscalRepository.deleteAll();
         usuarioRepository.deleteAll();
 
-        usuarioService.criarUsuario(
+        TestUsuarioFactory.criarUsuario(usuarioService,
+                "Operador XML", "11144477735", "31999990001",
                 "operador",
                 SENHA,
                 Role.OPERADOR,
                 true
         );
-        usuarioService.criarUsuario(
-                "consulta",
-                SENHA_CONSULTA,
-                Role.CONSULTA,
+        TestUsuarioFactory.criarUsuario(usuarioService,
+                "Gerente XML", "52998224725", "31999990002",
+                "gerente",
+                SENHA_GERENTE,
+                Role.GERENTE,
                 true
         );
 
         operadorToken = token("operador", SENHA);
-        consultaToken = token("consulta", SENHA_CONSULTA);
+        gerenteToken = token("gerente", SENHA_GERENTE);
     }
 
     @Test
@@ -294,11 +296,11 @@ class ImportacaoXmlNfeIntegrationTests {
     }
 
     @Test
-    void perfilConsultaNaoPodeImportarXml() throws Exception {
+    void perfilGerenteNaoPodeImportarXml() throws Exception {
         mockMvc.perform(requisicaoImportacao(xmlValido(chave(111), "1"))
                         .header(
                                 HttpHeaders.AUTHORIZATION,
-                                bearer(consultaToken)
+                                bearer(gerenteToken)
                         ))
                 .andExpect(status().isForbidden());
     }

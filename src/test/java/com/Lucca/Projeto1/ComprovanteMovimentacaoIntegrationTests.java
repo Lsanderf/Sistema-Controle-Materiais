@@ -1,7 +1,7 @@
 package com.Lucca.Projeto1;
 
 import com.Lucca.Projeto1.model.Contrato;
-import com.Lucca.Projeto1.model.Funcionario;
+import com.Lucca.Projeto1.model.Usuario;
 import com.Lucca.Projeto1.model.Material;
 import com.Lucca.Projeto1.model.Role;
 import com.Lucca.Projeto1.model.TipoMovimentacao;
@@ -10,7 +10,7 @@ import com.Lucca.Projeto1.model.ComprovanteMovimentacao;
 import com.Lucca.Projeto1.repository.ComprovanteMovimentacaoRepository;
 import com.Lucca.Projeto1.repository.ContratoRepository;
 import com.Lucca.Projeto1.repository.EvidenciaMovimentacaoRepository;
-import com.Lucca.Projeto1.repository.FuncionarioRepository;
+import com.Lucca.Projeto1.repository.UsuarioRepository;
 import com.Lucca.Projeto1.repository.MaterialRepository;
 import com.Lucca.Projeto1.repository.MovimentacaoRepository;
 import com.Lucca.Projeto1.repository.NotaFiscalEntradaRepository;
@@ -52,7 +52,7 @@ class ComprovanteMovimentacaoIntegrationTests {
 
     private static final String SENHA_ADMIN = "senhaAdmin123";
     private static final String SENHA_OPERADOR = "senhaOperador123";
-    private static final String SENHA_CONSULTA = "senhaConsulta123";
+    private static final String SENHA_GERENTE = "senhaConsulta123";
 
     @Autowired
     private MockMvc mockMvc;
@@ -73,7 +73,7 @@ class ComprovanteMovimentacaoIntegrationTests {
     private NotaFiscalEntradaRepository notaFiscalRepository;
 
     @Autowired
-    private FuncionarioRepository funcionarioRepository;
+    private UsuarioRepository encarregadoRepository;
 
     @Autowired
     private ContratoRepository contratoRepository;
@@ -89,7 +89,7 @@ class ComprovanteMovimentacaoIntegrationTests {
 
     private String adminToken;
     private String operadorToken;
-    private String consultaToken;
+    private String gerenteToken;
 
     @BeforeEach
     void prepararBanco() throws Exception {
@@ -97,32 +97,32 @@ class ComprovanteMovimentacaoIntegrationTests {
         comprovanteRepository.deleteAll();
         movimentacaoRepository.deleteAll();
         notaFiscalRepository.deleteAll();
-        funcionarioRepository.deleteAll();
+        encarregadoRepository.deleteAll();
         contratoRepository.deleteAll();
         materialRepository.deleteAll();
         usuarioRepository.deleteAll();
 
-        usuarioService.criarUsuario("admin", SENHA_ADMIN, Role.ADMIN, true);
-        usuarioService.criarUsuario(
+        TestUsuarioFactory.criarUsuario(usuarioService, "admin", SENHA_ADMIN, Role.ADMIN, true);
+        TestUsuarioFactory.criarUsuario(usuarioService,
                 "operador",
                 SENHA_OPERADOR,
                 Role.OPERADOR,
                 true
         );
-        usuarioService.criarUsuario(
-                "consulta",
-                SENHA_CONSULTA,
-                Role.CONSULTA,
+        TestUsuarioFactory.criarUsuario(usuarioService,
+                "gerente",
+                SENHA_GERENTE,
+                Role.GERENTE,
                 true
         );
 
         adminToken = token("admin", SENHA_ADMIN);
         operadorToken = token("operador", SENHA_OPERADOR);
-        consultaToken = token("consulta", SENHA_CONSULTA);
+        gerenteToken = token("gerente", SENHA_GERENTE);
     }
 
     @Test
-    void consultarComprovanteExistenteRetornaSnapshotCompleto() throws Exception {
+    void gerenterComprovanteExistenteRetornaSnapshotCompleto() throws Exception {
         Contexto contexto = criarContexto(10);
         Long movimentacaoId = id(registrarMovimentacao(
                 contexto,
@@ -132,7 +132,7 @@ class ComprovanteMovimentacaoIntegrationTests {
         ));
 
         mockMvc.perform(get("/movimentacoes/{id}/comprovante", movimentacaoId)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(consultaToken)))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(movimentacaoId))
                 .andExpect(jsonPath("$.tipo").value("RETIRADA"))
@@ -145,10 +145,10 @@ class ComprovanteMovimentacaoIntegrationTests {
                 .andExpect(jsonPath("$.material.id")
                         .value(contexto.material().getId()))
                 .andExpect(jsonPath("$.material.nome").value("Capacete"))
-                .andExpect(jsonPath("$.funcionario.id")
-                        .value(contexto.funcionario().getId()))
-                .andExpect(jsonPath("$.funcionario.nome").value("João Silva"))
-                .andExpect(jsonPath("$.funcionario.cargo").value("Pedreiro"))
+                .andExpect(jsonPath("$.encarregado.id")
+                        .value(contexto.encarregado().getId()))
+                .andExpect(jsonPath("$.encarregado.nome").value("João Silva"))
+                .andExpect(jsonPath("$.encarregado.cpf").doesNotExist())
                 .andExpect(jsonPath("$.contrato.id")
                         .value(contexto.contrato().getId()))
                 .andExpect(jsonPath("$.registradoPor.username").value("operador"))
@@ -159,10 +159,10 @@ class ComprovanteMovimentacaoIntegrationTests {
     }
 
     @Test
-    void consultarComprovanteDeMovimentacaoInexistenteRetornaNotFound()
+    void gerenterComprovanteDeMovimentacaoInexistenteRetornaNotFound()
             throws Exception {
         mockMvc.perform(get("/movimentacoes/{id}/comprovante", 999999)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(consultaToken)))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.erro").value(
                         "Movimentação com ID 999999 não encontrada"
@@ -208,10 +208,10 @@ class ComprovanteMovimentacaoIntegrationTests {
                 .get("movimentacoes").get(0).get("id").asLong();
 
         mockMvc.perform(get("/movimentacoes/{id}/comprovante", movimentacaoId)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(consultaToken)))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.tipo").value("ENTRADA"))
-                .andExpect(jsonPath("$.funcionario").isEmpty())
+                .andExpect(jsonPath("$.encarregado").isEmpty())
                 .andExpect(jsonPath("$.contrato").isEmpty())
                 .andExpect(jsonPath("$.notaFiscal.id").value(notaId))
                 .andExpect(jsonPath("$.notaFiscal.numero").value("NF-908"))
@@ -224,7 +224,7 @@ class ComprovanteMovimentacaoIntegrationTests {
     }
 
     @Test
-    void comprovanteDeDevolucaoRetornaFuncionarioContratoEOperador()
+    void comprovanteDeDevolucaoRetornaUsuarioContratoEOperador()
             throws Exception {
         Contexto contexto = criarContexto(10);
         registrarMovimentacao(
@@ -241,11 +241,11 @@ class ComprovanteMovimentacaoIntegrationTests {
         ));
 
         mockMvc.perform(get("/movimentacoes/{id}/comprovante", devolucaoId)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(consultaToken)))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.tipo").value("DEVOLUCAO"))
                 .andExpect(jsonPath("$.quantidade").value(4))
-                .andExpect(jsonPath("$.funcionario.nome").value("João Silva"))
+                .andExpect(jsonPath("$.encarregado.nome").value("João Silva"))
                 .andExpect(jsonPath("$.contrato.nome").value("Contrato A"))
                 .andExpect(jsonPath("$.material.nome").value("Capacete"))
                 .andExpect(jsonPath("$.registradoPor.username").value("operador"))
@@ -266,16 +266,16 @@ class ComprovanteMovimentacaoIntegrationTests {
 
         contexto.material().setNome("Capacete renomeado");
         materialRepository.saveAndFlush(contexto.material());
-        contexto.funcionario().setNome("Nome atualizado");
-        funcionarioRepository.saveAndFlush(contexto.funcionario());
+        contexto.encarregado().setNome("Nome atualizado");
+        encarregadoRepository.saveAndFlush(contexto.encarregado());
         contexto.contrato().setNome("Contrato atualizado");
         contratoRepository.saveAndFlush(contexto.contrato());
 
         mockMvc.perform(get("/movimentacoes/{id}/comprovante", movimentacaoId)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(consultaToken)))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.material.nome").value("Capacete"))
-                .andExpect(jsonPath("$.funcionario.nome").value("João Silva"))
+                .andExpect(jsonPath("$.encarregado.nome").value("João Silva"))
                 .andExpect(jsonPath("$.contrato.nome").value("Contrato A"));
     }
 
@@ -308,7 +308,7 @@ class ComprovanteMovimentacaoIntegrationTests {
             throws Exception {
         Contexto contexto = criarContexto(10);
         Movimentacao historica = new Movimentacao();
-        historica.setFuncionario(contexto.funcionario());
+        historica.setEncarregado(contexto.encarregado());
         historica.setContrato(contexto.contrato());
         historica.setMaterial(contexto.material());
         historica.setQuantidade(2);
@@ -334,8 +334,8 @@ class ComprovanteMovimentacaoIntegrationTests {
                 )
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.tipo").value("ASSINATURA"))
-                .andExpect(jsonPath("$.funcionario.id")
-                        .value(contexto.funcionario().getId()))
+                .andExpect(jsonPath("$.encarregado.id")
+                        .value(contexto.encarregado().getId()))
                 .andExpect(jsonPath("$.registradaPor.username").value("operador"))
                 .andExpect(jsonPath("$.contentType").value("image/png"))
                 .andExpect(jsonPath("$.storageKey").doesNotExist())
@@ -351,13 +351,13 @@ class ComprovanteMovimentacaoIntegrationTests {
                                 movimentacaoId,
                                 evidenciaId
                         )
-                        .header(HttpHeaders.AUTHORIZATION, bearer(consultaToken)))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken)))
                 .andExpect(status().isOk())
                 .andExpect(content().bytes(png))
                 .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"));
 
         mockMvc.perform(get("/movimentacoes/{id}/comprovante", movimentacaoId)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(consultaToken)))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.evidencias.length()").value(1))
                 .andExpect(jsonPath("$.evidencias[0].id").value(evidenciaId))
@@ -382,7 +382,7 @@ class ComprovanteMovimentacaoIntegrationTests {
                                 .file(arquivo)
                                 .header(
                                         HttpHeaders.AUTHORIZATION,
-                                        bearer(consultaToken)
+                                        bearer(gerenteToken)
                                 )
                 )
                 .andExpect(status().isForbidden());
@@ -395,7 +395,7 @@ class ComprovanteMovimentacaoIntegrationTests {
             String observacao
     ) throws Exception {
         Map<String, Object> request = new java.util.LinkedHashMap<>();
-        request.put("funcionarioId", contexto.funcionario().getId());
+        request.put("encarregadoId", contexto.encarregado().getId());
         request.put("contratoId", contexto.contrato().getId());
         request.put("materialId", contexto.material().getId());
         request.put("quantidade", quantidade);
@@ -412,8 +412,8 @@ class ComprovanteMovimentacaoIntegrationTests {
 
     private Contexto criarContexto(int estoque) {
         return new Contexto(
-                funcionarioRepository.save(
-                        new Funcionario("João Silva", "12345678909", "Pedreiro")
+                encarregadoRepository.save(
+                        TestUsuarioFactory.encarregado("João Silva", "12345678909", "Pedreiro")
                 ),
                 contratoRepository.save(
                         new Contrato("Contrato A", "Obra principal", true)
@@ -458,7 +458,7 @@ class ComprovanteMovimentacaoIntegrationTests {
     }
 
     private record Contexto(
-            Funcionario funcionario,
+            Usuario encarregado,
             Contrato contrato,
             Material material
     ) {

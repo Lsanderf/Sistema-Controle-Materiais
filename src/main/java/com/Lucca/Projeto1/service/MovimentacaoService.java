@@ -7,15 +7,18 @@ import com.Lucca.Projeto1.exception.RecursoNaoEncontradoException;
 import com.Lucca.Projeto1.exception.RegraNegocioException;
 import com.Lucca.Projeto1.mapper.MovimentacaoMapper;
 import com.Lucca.Projeto1.model.Contrato;
-import com.Lucca.Projeto1.model.Funcionario;
 import com.Lucca.Projeto1.model.Material;
 import com.Lucca.Projeto1.model.Movimentacao;
+import com.Lucca.Projeto1.model.Requisicao;
+import com.Lucca.Projeto1.model.Role;
+import com.Lucca.Projeto1.model.StatusRequisicao;
 import com.Lucca.Projeto1.model.TipoMovimentacao;
 import com.Lucca.Projeto1.model.Usuario;
 import com.Lucca.Projeto1.repository.ContratoRepository;
-import com.Lucca.Projeto1.repository.FuncionarioRepository;
 import com.Lucca.Projeto1.repository.MaterialRepository;
 import com.Lucca.Projeto1.repository.MovimentacaoRepository;
+import com.Lucca.Projeto1.repository.RequisicaoRepository;
+import com.Lucca.Projeto1.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -38,7 +41,8 @@ public class MovimentacaoService {
 
     private final MovimentacaoRepository movimentacaoRepository;
     private final ContratoRepository contratoRepository;
-    private final FuncionarioRepository funcionarioRepository;
+    private final UsuarioRepository usuarioRepository;
+    private final RequisicaoRepository requisicaoRepository;
     private final MaterialRepository materialRepository;
     private final UsuarioAutenticadoService usuarioAutenticadoService;
     private final ComprovanteMovimentacaoService comprovanteService;
@@ -47,7 +51,8 @@ public class MovimentacaoService {
 
     public MovimentacaoService(
             MovimentacaoRepository movimentacaoRepository,
-            FuncionarioRepository funcionarioRepository,
+            UsuarioRepository usuarioRepository,
+            RequisicaoRepository requisicaoRepository,
             ContratoRepository contratoRepository,
             MaterialRepository materialRepository,
             UsuarioAutenticadoService usuarioAutenticadoService,
@@ -56,7 +61,8 @@ public class MovimentacaoService {
             ImagemEvidenciaValidator imagemValidator
     ) {
         this.movimentacaoRepository = movimentacaoRepository;
-        this.funcionarioRepository = funcionarioRepository;
+        this.usuarioRepository = usuarioRepository;
+        this.requisicaoRepository = requisicaoRepository;
         this.contratoRepository = contratoRepository;
         this.materialRepository = materialRepository;
         this.usuarioAutenticadoService = usuarioAutenticadoService;
@@ -80,9 +86,16 @@ public class MovimentacaoService {
         if (foto != null && request.getTipo() != TipoMovimentacao.DEVOLUCAO) {
             throw new RegraNegocioException("Foto do material é permitida apenas na devolução");
         }
+        if (request.getTipo() == TipoMovimentacao.DEVOLUCAO && foto == null) {
+            throw new RegraNegocioException("A foto do material é obrigatória na devolução");
+        }
         var assinaturaValidada = imagemValidator.validar(assinatura, true);
         var fotoValidada = foto == null ? null : imagemValidator.validar(foto, false);
         Usuario usuarioAutenticado = usuarioAutenticadoService.obter();
+        if (usuarioAutenticado.getRole() != Role.ADMIN
+                && usuarioAutenticado.getRole() != Role.OPERADOR) {
+            throw new RegraNegocioException("Somente administrador ou operador pode registrar movimentações");
+        }
 
         String requestFingerprint =
                 chaveIdempotencia == null
@@ -103,19 +116,22 @@ public class MovimentacaoService {
             return repetida;
         }
 
-        Funcionario funcionario = funcionarioRepository
-                .findById(request.getFuncionarioId())
+        Usuario encarregado = usuarioRepository
+                .findById(request.getEncarregadoId())
                 .orElseThrow(() ->
                         new RecursoNaoEncontradoException(
-                                "Funcionário não encontrado"
+                                "Encarregado não encontrado"
                         )
                 );
 
         if (request.getTipo() == TipoMovimentacao.RETIRADA
-                && !Boolean.TRUE.equals(funcionario.isAtivo())) {
+                && !encarregado.isAtivo()) {
             throw new RegraNegocioException(
-                    "Não é possível registrar retirada para um funcionário inativo"
+                    "Não é possível registrar retirada para um encarregado inativo"
             );
+        }
+        if (encarregado.getRole() != Role.ENCARREGADO) {
+            throw new RegraNegocioException("O usuário informado não possui perfil ENCARREGADO");
         }
 
         Contrato contrato = contratoRepository
@@ -132,6 +148,8 @@ public class MovimentacaoService {
                     "Não é possível registrar retirada em um contrato inativo"
             );
         }
+
+        Requisicao requisicao = validarRequisicao(request, encarregado, contrato);
 
         Material material = buscarMaterialComBloqueio(request.getMaterialId());
 
@@ -160,7 +178,7 @@ public class MovimentacaoService {
             );
         } else if (request.getTipo() == TipoMovimentacao.DEVOLUCAO) {
             long quantidadeAindaRetirada = calcularQuantidadeAindaRetirada(
-                    request.getFuncionarioId(),
+                    request.getEncarregadoId(),
                     request.getContratoId(),
                     request.getMaterialId()
             );
@@ -177,7 +195,7 @@ public class MovimentacaoService {
         }
 
         Movimentacao movimentacao = new Movimentacao();
-        movimentacao.setFuncionario(funcionario);
+        movimentacao.setEncarregado(encarregado);
         movimentacao.setContrato(contrato);
         movimentacao.setMaterial(material);
         movimentacao.setQuantidade(request.getQuantidade());
@@ -190,6 +208,7 @@ public class MovimentacaoService {
         movimentacao.setNotaFiscal(null);
         movimentacao.setIdempotencyKey(chaveIdempotencia);
         movimentacao.setRequestFingerprint(requestFingerprint);
+        movimentacao.setRequisicao(requisicao);
 
         Movimentacao movimentacaoSalva =
                 movimentacaoRepository.saveAndFlush(movimentacao);
@@ -265,7 +284,7 @@ public class MovimentacaoService {
         }
 
         Movimentacao estorno = new Movimentacao();
-        estorno.setFuncionario(origem.getFuncionario());
+        estorno.setEncarregado(origem.getEncarregado());
         estorno.setContrato(origem.getContrato());
         estorno.setMaterial(material);
         estorno.setQuantidade(origem.getQuantidade());
@@ -279,9 +298,12 @@ public class MovimentacaoService {
         estorno.setMovimentacaoOrigem(origem);
         estorno.setIdempotencyKey(chaveIdempotencia);
         estorno.setRequestFingerprint(requestFingerprint);
+        estorno.setRequisicao(origem.getRequisicao());
 
         Movimentacao estornoSalvo = movimentacaoRepository.saveAndFlush(estorno);
         comprovanteService.registrar(estornoSalvo);
+
+        reabrirSeUltimaRetiradaFoiEstornada(origem);
 
         return MovimentacaoMapper.paraResponse(estornoSalvo);
     }
@@ -303,11 +325,11 @@ public class MovimentacaoService {
     }
 
     @Transactional(readOnly = true)
-    public List<MovimentacaoResponse> listarPorFuncionario(
-            Long funcionarioId
+    public List<MovimentacaoResponse> listarPorEncarregado(
+            Long encarregadoId
     ) {
         return mapearComSituacaoEstorno(
-                movimentacaoRepository.findByFuncionarioId(funcionarioId)
+                movimentacaoRepository.findByEncarregadoId(encarregadoId)
         );
     }
 
@@ -327,6 +349,46 @@ public class MovimentacaoService {
         return mapearComSituacaoEstorno(
                 movimentacaoRepository.findByMaterialId(materialId)
         );
+    }
+
+    private Requisicao validarRequisicao(
+            MovimentacaoRequest request,
+            Usuario encarregado,
+            Contrato contrato
+    ) {
+        if (request.getRequisicaoId() == null) {
+            return null;
+        }
+        if (request.getTipo() != TipoMovimentacao.RETIRADA) {
+            throw new RegraNegocioException("Somente retiradas podem ser vinculadas a uma requisição");
+        }
+        Requisicao requisicao = requisicaoRepository
+                .findByIdComBloqueio(request.getRequisicaoId())
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Requisição não encontrada"));
+        if (requisicao.getStatus() != StatusRequisicao.PENDENTE) {
+            throw new RegraNegocioException("Não é possível registrar retirada após a finalização do atendimento");
+        }
+        if (!requisicao.getEncarregado().getId().equals(encarregado.getId())
+                || !requisicao.getContrato().getId().equals(contrato.getId())) {
+            throw new RegraNegocioException(
+                    "O contrato e o encarregado devem corresponder à requisição"
+            );
+        }
+        return requisicao;
+    }
+
+    private void reabrirSeUltimaRetiradaFoiEstornada(Movimentacao origem) {
+        if (origem.getTipo() != TipoMovimentacao.RETIRADA || origem.getRequisicao() == null) {
+            return;
+        }
+        Requisicao requisicao = requisicaoRepository
+                .findByIdComBloqueio(origem.getRequisicao().getId())
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Requisição não encontrada"));
+        if (requisicao.getStatus() == StatusRequisicao.AGUARDANDO_CONFIRMACAO
+                && movimentacaoRepository.contarRetiradasValidas(requisicao.getId()) == 0) {
+            requisicao.setStatus(StatusRequisicao.PENDENTE);
+            requisicaoRepository.save(requisicao);
+        }
     }
 
     private Material buscarMaterialComBloqueio(Long materialId) {
@@ -400,13 +462,13 @@ public class MovimentacaoService {
     }
 
     private long calcularQuantidadeAindaRetirada(
-            Long funcionarioId,
+            Long encarregadoId,
             Long contratoId,
             Long materialId
     ) {
         return movimentacaoRepository
-                .findByFuncionarioIdAndContratoIdAndMaterialId(
-                        funcionarioId,
+                .findByEncarregadoIdAndContratoIdAndMaterialId(
+                        encarregadoId,
                         contratoId,
                         materialId
                 )
@@ -570,8 +632,10 @@ public class MovimentacaoService {
 
         atualizarFingerprint(
                 digest,
-                request.getFuncionarioId()
+                request.getEncarregadoId()
         );
+
+        atualizarFingerprint(digest, request.getRequisicaoId());
 
         atualizarFingerprint(
                 digest,

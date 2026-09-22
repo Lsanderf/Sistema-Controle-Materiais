@@ -5,7 +5,6 @@ import com.Lucca.Projeto1.exception.RecursoNaoEncontradoException;
 import com.Lucca.Projeto1.exception.RegraNegocioException;
 import com.Lucca.Projeto1.mapper.EvidenciaMovimentacaoMapper;
 import com.Lucca.Projeto1.model.EvidenciaMovimentacao;
-import com.Lucca.Projeto1.model.Funcionario;
 import com.Lucca.Projeto1.model.Movimentacao;
 import com.Lucca.Projeto1.model.TipoEvidenciaMovimentacao;
 import com.Lucca.Projeto1.model.TipoMovimentacao;
@@ -116,7 +115,12 @@ public class EvidenciaMovimentacaoService {
         Long movimentacaoId = movimentacao.getId();
         byte[] conteudo = imagem.conteudo();
         Usuario usuario = usuarioAutenticadoService.obter();
-        Funcionario funcionario = movimentacao.getFuncionario();
+        Usuario encarregado = movimentacao.getEncarregado();
+        Usuario assinante = tipo == ASSINATURA
+                ? (movimentacao.getTipo() == TipoMovimentacao.DEVOLUCAO
+                    ? usuario
+                    : encarregado)
+                : null;
         String storageKey = "movimentacoes/" + movimentacaoId + "/"
                 + tipo.name().toLowerCase(Locale.ROOT) + "/" + UUID.randomUUID() + "." + imagem.extensao();
 
@@ -130,8 +134,11 @@ public class EvidenciaMovimentacaoService {
                     movimentacaoId,
                     tipo,
                     LocalDateTime.now(),
-                    funcionario.getId(),
-                    funcionario.getNome(),
+                    encarregado.getId(),
+                    encarregado.getNome(),
+                    assinante == null ? null : assinante.getId(),
+                    assinante == null ? null : assinante.getNome(),
+                    assinante == null ? null : assinante.getUsername(),
                     usuario.getId(),
                     usuario.getUsername(),
                     storageKey,
@@ -187,9 +194,9 @@ public class EvidenciaMovimentacaoService {
                     "Assinaturas são permitidas apenas em retiradas e devoluções"
             );
         }
-        if (movimentacao.getFuncionario() == null) {
+        if (movimentacao.getEncarregado() == null) {
             throw new RegraNegocioException(
-                    "A movimentação não possui funcionário relacionado"
+                    "A movimentação não possui encarregado relacionado"
             );
         }
     }

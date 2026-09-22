@@ -31,8 +31,8 @@ public class Movimentacao {
 
 
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
-    @JoinColumn(name = "funcionario_id", nullable = true, updatable = false)
-    private Funcionario funcionario;
+    @JoinColumn(name = "encarregado_id", nullable = true, updatable = false)
+    private Usuario encarregado;
 
 
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
@@ -89,6 +89,10 @@ public class Movimentacao {
     )
     private Movimentacao movimentacaoOrigem;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "requisicao_id", nullable = true, updatable = false)
+    private Requisicao requisicao;
+
     public Movimentacao() {
     }
 
@@ -106,12 +110,12 @@ public class Movimentacao {
         return id;
     }
 
-    public Funcionario getFuncionario() {
-        return funcionario;
+    public Usuario getEncarregado() {
+        return encarregado;
     }
 
-    public void setFuncionario(Funcionario funcionario) {
-        this.funcionario = funcionario;
+    public void setEncarregado(Usuario encarregado) {
+        this.encarregado = encarregado;
     }
 
     public Contrato getContrato() {
@@ -208,5 +212,13 @@ public class Movimentacao {
 
     public void setMovimentacaoOrigem(Movimentacao movimentacaoOrigem) {
         this.movimentacaoOrigem = movimentacaoOrigem;
+    }
+
+    public Requisicao getRequisicao() {
+        return requisicao;
+    }
+
+    public void setRequisicao(Requisicao requisicao) {
+        this.requisicao = requisicao;
     }
 }

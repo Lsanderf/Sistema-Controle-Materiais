@@ -1,8 +1,5 @@
 package com.Lucca.Projeto1.mapper;
 
-import com.Lucca.Projeto1.dto.contrato.ContratoResponse;
-import com.Lucca.Projeto1.dto.funcionario.FuncionarioResponse;
-import com.Lucca.Projeto1.dto.material.MaterialResponse;
 import com.Lucca.Projeto1.dto.movimentacao.MovimentacaoResponse;
 import com.Lucca.Projeto1.model.Movimentacao;
 
@@ -21,9 +18,13 @@ public class MovimentacaoMapper {
             Movimentacao movimentacao,
             Long estornoId
     ) {
-        String nomeFuncionario =
-                movimentacao.getFuncionario() != null
-                        ? movimentacao.getFuncionario().getNome()
+        Long encarregadoId = movimentacao.getEncarregado() != null
+                ? movimentacao.getEncarregado().getId()
+                : null;
+
+        String nomeEncarregado =
+                movimentacao.getEncarregado() != null
+                        ? movimentacao.getEncarregado().getNome()
                         : null;
 
         String nomeContrato =
@@ -56,9 +57,14 @@ public class MovimentacaoMapper {
                         ? movimentacao.getMovimentacaoOrigem().getId()
                         : null;
 
+        Long requisicaoId = movimentacao.getRequisicao() != null
+                ? movimentacao.getRequisicao().getId()
+                : null;
+
         return new MovimentacaoResponse(
                 movimentacao.getId(),
-                nomeFuncionario,
+                encarregadoId,
+                nomeEncarregado,
                 nomeContrato,
                 nomeMaterial,
                 movimentacao.getQuantidade(),
@@ -70,7 +76,8 @@ public class MovimentacaoMapper {
                 notaFiscalId,
                 movimentacao.getObservacao(),
                 movimentacaoOrigemId,
-                estornoId
+                estornoId,
+                requisicaoId
         );
     }
 }

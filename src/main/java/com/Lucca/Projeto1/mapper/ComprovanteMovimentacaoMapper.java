@@ -15,13 +15,12 @@ public final class ComprovanteMovimentacaoMapper {
             ComprovanteMovimentacao comprovante,
             List<EvidenciaMovimentacaoResponse> evidencias
     ) {
-        ComprovanteMovimentacaoResponse.FuncionarioResumoResponse funcionario =
-                comprovante.getFuncionarioId() == null
+        ComprovanteMovimentacaoResponse.EncarregadoResumoResponse encarregado =
+                comprovante.getEncarregadoId() == null
                         ? null
-                        : new ComprovanteMovimentacaoResponse.FuncionarioResumoResponse(
-                                comprovante.getFuncionarioId(),
-                                comprovante.getFuncionarioNome(),
-                                comprovante.getFuncionarioCargo()
+                        : new ComprovanteMovimentacaoResponse.EncarregadoResumoResponse(
+                                comprovante.getEncarregadoId(),
+                                comprovante.getEncarregadoNome()
                         );
 
         ComprovanteMovimentacaoResponse.ContratoResumoResponse contrato =
@@ -67,11 +66,15 @@ public final class ComprovanteMovimentacaoMapper {
                         comprovante.getMaterialNome(),
                         comprovante.getMaterialDescricao()
                 ),
-                funcionario,
+                encarregado,
                 contrato,
                 registradoPor,
                 notaFiscal,
                 comprovante.getMovimentacaoOrigemId(),
+                comprovante.getRequisicaoId() == null ? null
+                        : new ComprovanteMovimentacaoResponse.RequisicaoResumoResponse(
+                                comprovante.getRequisicaoId(),
+                                comprovante.getRequisicaoDescricao()),
                 evidencias,
                 comprovante.getGeradoEm(),
                 comprovante.getVersao()

@@ -9,9 +9,12 @@ import jakarta.validation.constraints.Size;
 
 public class MovimentacaoRequest {
 
-    @NotNull(message = "O funcionário é obrigatório")
-    @Positive(message = "O funcionário deve ser maior que zero")
-    private Long funcionarioId;
+    @NotNull(message = "O encarregado é obrigatório")
+    @Positive(message = "O encarregado deve ser maior que zero")
+    private Long encarregadoId;
+
+    @Positive(message = "A requisição deve ser maior que zero")
+    private Long requisicaoId;
 
     @NotNull(message = "O contrato é obrigatório")
     @Positive(message = "O contrato deve ser maior que zero")
@@ -32,13 +35,16 @@ public class MovimentacaoRequest {
     @Size(max = 1000, message = "A observação deve possuir no máximo 1.000 caracteres")
     private String observacao;
 
-    public Long getFuncionarioId() {
-        return funcionarioId;
+    public Long getEncarregadoId() {
+        return encarregadoId;
     }
 
-    public void setFuncionarioId(Long funcionarioId) {
-        this.funcionarioId = funcionarioId;
+    public void setEncarregadoId(Long encarregadoId) {
+        this.encarregadoId = encarregadoId;
     }
+
+    public Long getRequisicaoId() { return requisicaoId; }
+    public void setRequisicaoId(Long requisicaoId) { this.requisicaoId = requisicaoId; }
 
     public Long getContratoId() {
         return contratoId;

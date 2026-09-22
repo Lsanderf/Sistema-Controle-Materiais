@@ -3,17 +3,15 @@ package com.Lucca.Projeto1;
 import com.Lucca.Projeto1.model.ComprovanteMovimentacao;
 import com.Lucca.Projeto1.model.Contrato;
 import com.Lucca.Projeto1.model.EvidenciaMovimentacao;
-import com.Lucca.Projeto1.model.Funcionario;
+import com.Lucca.Projeto1.model.Usuario;
 import com.Lucca.Projeto1.model.Material;
 import com.Lucca.Projeto1.model.Movimentacao;
 import com.Lucca.Projeto1.model.Role;
 import com.Lucca.Projeto1.model.TipoEvidenciaMovimentacao;
 import com.Lucca.Projeto1.model.TipoMovimentacao;
-import com.Lucca.Projeto1.model.Usuario;
 import com.Lucca.Projeto1.repository.ComprovanteMovimentacaoRepository;
 import com.Lucca.Projeto1.repository.ContratoRepository;
 import com.Lucca.Projeto1.repository.EvidenciaMovimentacaoRepository;
-import com.Lucca.Projeto1.repository.FuncionarioRepository;
 import com.Lucca.Projeto1.repository.MaterialRepository;
 import com.Lucca.Projeto1.repository.MovimentacaoRepository;
 import com.Lucca.Projeto1.repository.UsuarioRepository;
@@ -62,7 +60,7 @@ class BancoAuditoriaPostgresIntegrationTests {
     private ComprovanteMovimentacaoRepository comprovanteRepository;
 
     @Autowired
-    private FuncionarioRepository funcionarioRepository;
+    private UsuarioRepository encarregadoRepository;
 
     @Autowired
     private ContratoRepository contratoRepository;
@@ -373,7 +371,7 @@ class BancoAuditoriaPostgresIntegrationTests {
 
     @ParameterizedTest(name = "{0} rejeita ID inexistente")
     @CsvSource({
-            "funcionario_id, tb_funcionarios, fk_movimentacoes_funcionario",
+            "encarregado_id, tb_usuarios, fk_movimentacoes_encarregado",
             "contrato_id, tb_contratos, fk_movimentacoes_contrato",
             "usuario_id, tb_usuarios, fk_movimentacoes_usuario",
             "nota_fiscal_id, tb_notas_fiscais, fk_movimentacoes_nota_fiscal"
@@ -383,6 +381,10 @@ class BancoAuditoriaPostgresIntegrationTests {
     ) {
         // Arrange
         Material material = criarMaterialDeAuditoria();
+        Usuario encarregadoValido = criarEncarregadoDeAuditoria();
+        Contrato contratoValido = contratoRepository.save(
+                new Contrato("Contrato-" + UUID.randomUUID(), "Contrato de auditoria", true)
+        );
         Long paiInexistente = idInexistente(tabelaPai);
         Long registrosAntes = contarMovimentacoes();
 
@@ -390,8 +392,12 @@ class BancoAuditoriaPostgresIntegrationTests {
         DataIntegrityViolationException exception = assertThrows(
                 DataIntegrityViolationException.class,
                 () -> inserirMovimentacaoComReferencias(
-                        coluna.equals("funcionario_id") ? paiInexistente : null,
-                        coluna.equals("contrato_id") ? paiInexistente : null,
+                        coluna.equals("encarregado_id")
+                                ? paiInexistente
+                                : coluna.equals("contrato_id") ? encarregadoValido.getId() : null,
+                        coluna.equals("contrato_id")
+                                ? paiInexistente
+                                : coluna.equals("encarregado_id") ? contratoValido.getId() : null,
                         material.getId(),
                         coluna.equals("usuario_id") ? paiInexistente : null,
                         coluna.equals("nota_fiscal_id") ? paiInexistente : null
@@ -455,7 +461,7 @@ class BancoAuditoriaPostgresIntegrationTests {
             throws NoSuchAlgorithmException {
         // Arrange
         Long movimentacaoInexistente = idInexistente("tb_movimentacoes");
-        Funcionario funcionario = criarFuncionarioDeAuditoria();
+        Usuario encarregado = criarEncarregadoDeAuditoria();
         Usuario usuario = criarUsuarioDeAuditoria();
         byte[] assinaturaPng = assinaturaPng();
         String hashAssinatura = sha256(assinaturaPng);
@@ -474,17 +480,21 @@ class BancoAuditoriaPostgresIntegrationTests {
                 () -> jdbcTemplate.update(
                         """
                         INSERT INTO tb_evidencias_movimentacao (
-                            movimentacao_id, tipo, data_evidencia, funcionario_id,
-                            funcionario_nome, registrada_por_id, registrada_por_username,
+                            movimentacao_id, tipo, data_evidencia, encarregado_id,
+                            encarregado_nome, assinante_id, assinante_nome, assinante_username,
+                            registrada_por_id, registrada_por_username,
                             storage_key, nome_arquivo_original, content_type,
                             tamanho_bytes, sha256
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
                         movimentacaoInexistente,
                         TipoEvidenciaMovimentacao.ASSINATURA.name(),
                         Timestamp.valueOf(LocalDateTime.now()),
-                        funcionario.getId(),
-                        funcionario.getNome(),
+                        encarregado.getId(),
+                        encarregado.getNome(),
+                        encarregado.getId(),
+                        encarregado.getNome(),
+                        encarregado.getUsername(),
                         usuario.getId(),
                         usuario.getUsername(),
                         storageKey,
@@ -564,24 +574,27 @@ class BancoAuditoriaPostgresIntegrationTests {
     }
 
     private int inserirMovimentacaoComReferencias(
-            Long funcionarioId, Long contratoId, Long materialId,
+            Long encarregadoId, Long contratoId, Long materialId,
             Long usuarioId, Long notaFiscalId
     ) {
         Timestamp agora = Timestamp.valueOf(LocalDateTime.now());
+        TipoMovimentacao tipo = encarregadoId != null || contratoId != null
+                ? TipoMovimentacao.RETIRADA
+                : TipoMovimentacao.ENTRADA;
         return jdbcTemplate.update(
                 """
                 INSERT INTO tb_movimentacoes (
-                    funcionario_id, contrato_id, material_id, usuario_id,
+                    encarregado_id, contrato_id, material_id, usuario_id,
                     nota_fiscal_id, quantidade, tipo, data_movimentacao, data_finalizacao
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                funcionarioId,
+                encarregadoId,
                 contratoId,
                 materialId,
                 usuarioId,
                 notaFiscalId,
                 2,
-                TipoMovimentacao.ENTRADA.name(),
+                tipo.name(),
                 agora,
                 agora
         );
@@ -618,13 +631,13 @@ class BancoAuditoriaPostgresIntegrationTests {
 
     private EvidenciaMovimentacao criarEvidenciaDeMovimentacaoFinalizada()
             throws NoSuchAlgorithmException {
-        Funcionario funcionario = criarFuncionarioDeAuditoria();
+        Usuario encarregado = criarEncarregadoDeAuditoria();
         Contrato contrato = contratoRepository.save(
                 new Contrato("Contrato-" + UUID.randomUUID(), "Contrato de auditoria", true)
         );
         Usuario usuario = criarUsuarioDeAuditoria();
         Movimentacao movimentacao = criarMovimentacaoFinalizada(
-                TipoMovimentacao.RETIRADA, funcionario, contrato, usuario
+                TipoMovimentacao.RETIRADA, encarregado, contrato, usuario
         );
 
         byte[] assinaturaPng = assinaturaPng();
@@ -635,8 +648,11 @@ class BancoAuditoriaPostgresIntegrationTests {
                 movimentacao.getId(),
                 TipoEvidenciaMovimentacao.ASSINATURA,
                 LocalDateTime.now(),
-                funcionario.getId(),
-                funcionario.getNome(),
+                encarregado.getId(),
+                encarregado.getNome(),
+                encarregado.getId(),
+                encarregado.getNome(),
+                encarregado.getUsername(),
                 usuario.getId(),
                 usuario.getUsername(),
                 storageKey,
@@ -654,15 +670,24 @@ class BancoAuditoriaPostgresIntegrationTests {
 
     private Usuario criarUsuarioDeAuditoria() {
         return usuarioRepository.save(
-                new Usuario("auditoria-" + UUID.randomUUID(), "senha-de-teste", Role.OPERADOR, true)
+                TestUsuarioFactory.usuarioPersistivel(
+                        "auditoria-" + UUID.randomUUID(),
+                        "senha-de-teste",
+                        Role.OPERADOR,
+                        true
+                )
         );
     }
 
-    private Funcionario criarFuncionarioDeAuditoria() {
-        return funcionarioRepository.save(
-                new Funcionario(
+    private Usuario criarEncarregadoDeAuditoria() {
+        String cpf = String.format(
+                "%011d",
+                ThreadLocalRandom.current().nextLong(100_000_000_000L)
+        );
+        return encarregadoRepository.save(
+                TestUsuarioFactory.encarregado(
                         "Funcionário de auditoria",
-                        String.format("%011d", ThreadLocalRandom.current().nextLong(100_000_000_000L)),
+                        cpf,
                         "Técnico"
                 )
         );
@@ -699,16 +724,16 @@ class BancoAuditoriaPostgresIntegrationTests {
 
     private Movimentacao criarMovimentacaoFinalizada(
             TipoMovimentacao tipo,
-            Funcionario funcionario,
+            Usuario encarregado,
             Contrato contrato,
             Usuario usuario
     ) {
-        return criarMovimentacaoFinalizada(tipo, funcionario, contrato, usuario, null, null);
+        return criarMovimentacaoFinalizada(tipo, encarregado, contrato, usuario, null, null);
     }
 
     private Movimentacao criarMovimentacaoFinalizada(
             TipoMovimentacao tipo,
-            Funcionario funcionario,
+            Usuario encarregado,
             Contrato contrato,
             Usuario usuario,
             String chave,
@@ -717,7 +742,7 @@ class BancoAuditoriaPostgresIntegrationTests {
         Material material = criarMaterialDeAuditoria();
 
         Movimentacao movimentacao = new Movimentacao();
-        movimentacao.setFuncionario(funcionario);
+        movimentacao.setEncarregado(encarregado);
         movimentacao.setContrato(contrato);
         movimentacao.setMaterial(material);
         movimentacao.setQuantidade(2);

@@ -1,7 +1,7 @@
 package com.Lucca.Projeto1;
 
 import com.Lucca.Projeto1.model.Contrato;
-import com.Lucca.Projeto1.model.Funcionario;
+import com.Lucca.Projeto1.model.Usuario;
 import com.Lucca.Projeto1.model.Material;
 import com.Lucca.Projeto1.model.Movimentacao;
 import com.Lucca.Projeto1.model.Role;
@@ -9,7 +9,7 @@ import com.Lucca.Projeto1.model.TipoMovimentacao;
 import com.Lucca.Projeto1.model.Usuario;
 import com.Lucca.Projeto1.exception.RegraNegocioException;
 import com.Lucca.Projeto1.repository.ContratoRepository;
-import com.Lucca.Projeto1.repository.FuncionarioRepository;
+import com.Lucca.Projeto1.repository.UsuarioRepository;
 import com.Lucca.Projeto1.repository.MaterialRepository;
 import com.Lucca.Projeto1.repository.MovimentacaoRepository;
 import com.Lucca.Projeto1.repository.UsuarioRepository;
@@ -61,7 +61,7 @@ class ApiIntegrationTests {
 
     private static final String SENHA_ADMIN = "senhaAdmin123";
     private static final String SENHA_OPERADOR = "senhaOperador123";
-    private static final String SENHA_CONSULTA = "senhaConsulta123";
+    private static final String SENHA_GERENTE = "senhaConsulta123";
 
     @Autowired
     private MockMvc mockMvc;
@@ -73,7 +73,7 @@ class ApiIntegrationTests {
     private MaterialRepository materialRepository;
 
     @Autowired
-    private FuncionarioRepository funcionarioRepository;
+    private UsuarioRepository encarregadoRepository;
 
     @Autowired
     private ContratoRepository contratoRepository;
@@ -95,25 +95,25 @@ class ApiIntegrationTests {
 
     private String adminToken;
     private String operadorToken;
-    private String consultaToken;
+    private String gerenteToken;
 
     @BeforeEach
     void prepararBanco() throws Exception {
         evidenciaRepository.deleteAll();
         comprovanteRepository.deleteAll();
         movimentacaoRepository.deleteAll();
-        funcionarioRepository.deleteAll();
+        encarregadoRepository.deleteAll();
         contratoRepository.deleteAll();
         materialRepository.deleteAll();
         usuarioRepository.deleteAll();
 
-        usuarioService.criarUsuario("admin", SENHA_ADMIN, Role.ADMIN, true);
-        usuarioService.criarUsuario("operador", SENHA_OPERADOR, Role.OPERADOR, true);
-        usuarioService.criarUsuario("consulta", SENHA_CONSULTA, Role.CONSULTA, true);
+        TestUsuarioFactory.criarUsuario(usuarioService, "admin", SENHA_ADMIN, Role.ADMIN, true);
+        TestUsuarioFactory.criarUsuario(usuarioService, "operador", SENHA_OPERADOR, Role.OPERADOR, true);
+        TestUsuarioFactory.criarUsuario(usuarioService, "gerente", SENHA_GERENTE, Role.GERENTE, true);
 
         adminToken = token("admin", SENHA_ADMIN);
         operadorToken = token("operador", SENHA_OPERADOR);
-        consultaToken = token("consulta", SENHA_CONSULTA);
+        gerenteToken = token("gerente", SENHA_GERENTE);
     }
 
     @ParameterizedTest
@@ -196,7 +196,7 @@ class ApiIntegrationTests {
                         .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
-                                "funcionarioId", contexto.funcionario().getId(),
+                                "encarregadoId", contexto.encarregado().getId(),
                                 "contratoId", contexto.contrato().getId(),
                                 "materialId", contexto.material().getId(),
                                 "quantidade", 7,
@@ -254,7 +254,7 @@ class ApiIntegrationTests {
                         )
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
-                                "funcionarioId", contexto.funcionario().getId(),
+                                "encarregadoId", contexto.encarregado().getId(),
                                 "contratoId", contexto.contrato().getId(),
                                 "materialId", contexto.material().getId(),
                                 "quantidade", 1,
@@ -509,55 +509,63 @@ class ApiIntegrationTests {
 
     @Test
     void cpfInvalidoERejeitado() throws Exception {
-        mockMvc.perform(post("/funcionarios")
+        mockMvc.perform(post("/usuarios/encarregados")
                         .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
                                 "nome", "João Silva",
                                 "cpf", "123",
-                                "cargo", "Pedreiro"
+                                "celular", "11999999999",
+                                "username", "joao-invalido",
+                                "password", "senhaForte123"
                         ))))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void cpfFormatadoESalvoSomenteComNumeros() throws Exception {
-        mockMvc.perform(post("/funcionarios")
+        mockMvc.perform(post("/usuarios/encarregados")
                         .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
                                 "nome", "João Silva",
                                 "cpf", "123.456.789-09",
-                                "cargo", "Pedreiro"
+                                "celular", "11999999999",
+                                "username", "joao-formatado",
+                                "password", "senhaForte123"
                         ))))
                 .andExpect(status().isCreated());
 
-        Funcionario funcionario = funcionarioRepository
-                .findByCpfNormalizado("12345678909")
+        Usuario encarregado = encarregadoRepository
+                .findByCpf("12345678909")
                 .orElseThrow();
 
-        assertEquals("12345678909", funcionario.getCpf());
+        assertEquals("12345678909", encarregado.getCpf());
     }
 
     @Test
     void cpfsIguaisComFormatosDiferentesSaoDuplicados() throws Exception {
-        mockMvc.perform(post("/funcionarios")
+        mockMvc.perform(post("/usuarios/encarregados")
                         .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
                                 "nome", "João Silva",
                                 "cpf", "123.456.789-09",
-                                "cargo", "Pedreiro"
+                                "celular", "11999999999",
+                                "username", "joao-duplicado",
+                                "password", "senhaForte123"
                         ))))
                 .andExpect(status().isCreated());
 
-        mockMvc.perform(post("/funcionarios")
+        mockMvc.perform(post("/usuarios/encarregados")
                         .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
                                 "nome", "Maria Silva",
                                 "cpf", "12345678909",
-                                "cargo", "Engenheira"
+                                "celular", "11988888888",
+                                "username", "maria-duplicada",
+                                "password", "senhaForte123"
                         ))))
                 .andExpect(status().isConflict());
     }
@@ -592,11 +600,11 @@ class ApiIntegrationTests {
     }
 
     @Test
-    void consultaNaoPodeRegistrarMovimentacao() throws Exception {
+    void gerenteNaoPodeRegistrarMovimentacao() throws Exception {
         ContextoMovimentacao contexto = criarContextoMovimentacao(10);
 
         registrarMovimentacao(
-                consultaToken,
+                gerenteToken,
                 contexto,
                 TipoMovimentacao.RETIRADA,
                 1
@@ -616,14 +624,16 @@ class ApiIntegrationTests {
     }
 
     @Test
-    void operadorNaoPodeCadastrarFuncionarioOuContrato() throws Exception {
-        mockMvc.perform(post("/funcionarios")
+    void operadorNaoPodeCadastrarUsuarioOuContrato() throws Exception {
+        mockMvc.perform(post("/usuarios/encarregados")
                         .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
                                 "nome", "João Silva",
                                 "cpf", "123.456.789-09",
-                                "cargo", "Pedreiro"
+                                "celular", "11999999999",
+                                "username", "joao-operador",
+                                "password", "senhaForte123"
                         ))))
                 .andExpect(status().isForbidden());
 
@@ -639,9 +649,9 @@ class ApiIntegrationTests {
     }
 
     @Test
-    void consultaNaoPodeCadastrarMaterial() throws Exception {
+    void gerenteNaoPodeCadastrarMaterial() throws Exception {
         mockMvc.perform(post("/materiais")
-                        .header(HttpHeaders.AUTHORIZATION, bearer(consultaToken))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
                                 "nome", "Capacete",
@@ -653,11 +663,11 @@ class ApiIntegrationTests {
     }
 
     @ParameterizedTest
-    @EnumSource(value = Role.class, names = {"OPERADOR", "CONSULTA"})
+    @EnumSource(value = Role.class, names = {"OPERADOR", "GERENTE"})
     void perfisSemAcessoAdministrativoNaoPodemAlterarMateriais(Role role)
             throws Exception {
         Material material = criarMaterial("Capacete", 8);
-        String authorization = bearer(role == Role.OPERADOR ? operadorToken : consultaToken);
+        String authorization = bearer(role == Role.OPERADOR ? operadorToken : gerenteToken);
 
         for (var request : List.of(
                 put("/materiais/{id}", material.getId()),
@@ -687,10 +697,10 @@ class ApiIntegrationTests {
     }
 
     @Test
-    void todosOsPerfisPodemConsultarMateriais() throws Exception {
+    void apenasAdminEOperadorPodemConsultarMateriais() throws Exception {
         Material material = criarMaterial("Capacete", 8);
 
-        for (String authToken : List.of(adminToken, operadorToken, consultaToken)) {
+        for (String authToken : List.of(adminToken, operadorToken)) {
             mockMvc.perform(get("/materiais")
                             .header(HttpHeaders.AUTHORIZATION, bearer(authToken)))
                     .andExpect(status().isOk())
@@ -700,6 +710,10 @@ class ApiIntegrationTests {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.nome").value("Capacete"));
         }
+
+        mockMvc.perform(get("/materiais")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken)))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -708,6 +722,9 @@ class ApiIntegrationTests {
                         .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
+                                "nome", "Novo Operador",
+                                "cpf", "11144477735",
+                                "celular", "11999999999",
                                 "username", "novoOperador",
                                 "password", "senhaForte123",
                                 "role", "OPERADOR"
@@ -743,7 +760,7 @@ class ApiIntegrationTests {
         mockMvc.perform(get("/usuarios")
                         .header(
                                 HttpHeaders.AUTHORIZATION,
-                                bearer(consultaToken)
+                                bearer(gerenteToken)
                         ))
                 .andExpect(status().isForbidden());
     }
@@ -775,6 +792,9 @@ class ApiIntegrationTests {
                         .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
+                                "nome", operador.getNome(),
+                                "cpf", operador.getCpf(),
+                                "celular", operador.getCelular(),
                                 "username", "operador_estoque",
                                 "role", "OPERADOR"
                         ))))
@@ -798,6 +818,9 @@ class ApiIntegrationTests {
                         .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
+                                "nome", operador.getNome(),
+                                "cpf", operador.getCpf(),
+                                "celular", operador.getCelular(),
                                 "username", "operador",
                                 "role", "OPERADOR",
                                 "novaSenha", "senhaNova123"
@@ -832,7 +855,10 @@ class ApiIntegrationTests {
                         .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
-                                "username", "consulta",
+                                "nome", operador.getNome(),
+                                "cpf", operador.getCpf(),
+                                "celular", operador.getCelular(),
+                                "username", "gerente",
                                 "role", "OPERADOR"
                         ))))
                 .andExpect(status().isConflict());
@@ -884,6 +910,9 @@ class ApiIntegrationTests {
                         .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
+                                "nome", admin.getNome(),
+                                "cpf", admin.getCpf(),
+                                "celular", admin.getCelular(),
                                 "username", "admin",
                                 "role", "OPERADOR"
                         ))))
@@ -938,7 +967,7 @@ class ApiIntegrationTests {
 
     @Test
     void usuarioInativoNaoConsegueLogin() throws Exception {
-        usuarioService.criarUsuario(
+        TestUsuarioFactory.criarUsuario(usuarioService,
                 "inativo",
                 "senhaInativa123",
                 Role.OPERADOR,
@@ -1012,7 +1041,7 @@ class ApiIntegrationTests {
 
     private ContextoMovimentacao criarContextoMovimentacao(int estoque) {
         return new ContextoMovimentacao(
-                criarFuncionario("João Silva", "12345678909"),
+                criarUsuario("João Silva", "12345678909"),
                 criarContrato("Contrato A"),
                 criarMaterial("Capacete", estoque)
         );
@@ -1030,9 +1059,9 @@ class ApiIntegrationTests {
                 .getQuantidadeEstoque();
     }
 
-    private Funcionario criarFuncionario(String nome, String cpf) {
-        return funcionarioRepository.save(
-                new Funcionario(nome, cpf, "Pedreiro")
+    private Usuario criarUsuario(String nome, String cpf) {
+        return encarregadoRepository.save(
+                TestUsuarioFactory.encarregado(nome, cpf, "Pedreiro")
         );
     }
 
@@ -1049,7 +1078,7 @@ class ApiIntegrationTests {
             int quantidade
     ) throws Exception {
         return mockMvc.perform(movimentacaoAssinada(json(Map.of(
-                        "funcionarioId", contexto.funcionario().getId(),
+                        "encarregadoId", contexto.encarregado().getId(),
                         "contratoId", contexto.contrato().getId(),
                         "materialId", contexto.material().getId(),
                         "quantidade", quantidade,
@@ -1098,7 +1127,7 @@ class ApiIntegrationTests {
     }
 
     private record ContextoMovimentacao(
-            Funcionario funcionario,
+            Usuario encarregado,
             Contrato contrato,
             Material material
     ) {
@@ -1176,7 +1205,7 @@ class ApiIntegrationTests {
         ContextoMovimentacao contexto = criarContextoMovimentacao(10);
 
         registrarMovimentacao(
-                consultaToken,
+                gerenteToken,
                 contexto,
                 TipoMovimentacao.RETIRADA,
                 3
@@ -1189,4 +1218,3 @@ class ApiIntegrationTests {
         assertEquals(0, evidenciaRepository.count());
     }
 }
-

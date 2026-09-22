@@ -4,7 +4,7 @@ import com.Lucca.Projeto1.model.*;
 import com.Lucca.Projeto1.repository.ComprovanteMovimentacaoRepository;
 import com.Lucca.Projeto1.repository.ContratoRepository;
 import com.Lucca.Projeto1.repository.EvidenciaMovimentacaoRepository;
-import com.Lucca.Projeto1.repository.FuncionarioRepository;
+import com.Lucca.Projeto1.repository.UsuarioRepository;
 import com.Lucca.Projeto1.repository.MaterialRepository;
 import com.Lucca.Projeto1.repository.MovimentacaoRepository;
 import com.Lucca.Projeto1.repository.UsuarioRepository;
@@ -51,7 +51,7 @@ class MovimentacaoIdempotenciaIntegrationTests {
     private MaterialRepository materialRepository;
 
     @Autowired
-    private FuncionarioRepository funcionarioRepository;
+    private UsuarioRepository encarregadoRepository;
 
     @Autowired
     private ContratoRepository contratoRepository;
@@ -78,12 +78,12 @@ class MovimentacaoIdempotenciaIntegrationTests {
         evidenciaRepository.deleteAll();
         comprovanteRepository.deleteAll();
         movimentacaoRepository.deleteAll();
-        funcionarioRepository.deleteAll();
+        encarregadoRepository.deleteAll();
         contratoRepository.deleteAll();
         materialRepository.deleteAll();
         usuarioRepository.deleteAll();
 
-        usuarioService.criarUsuario(
+        TestUsuarioFactory.criarUsuario(usuarioService,
                 "operador",
                 SENHA_OPERADOR,
                 Role.OPERADOR,
@@ -107,8 +107,8 @@ class MovimentacaoIdempotenciaIntegrationTests {
                 )
         );
 
-        Funcionario funcionario = funcionarioRepository.save(
-                new Funcionario(
+        Usuario encarregado = encarregadoRepository.save(
+                TestUsuarioFactory.encarregado(
                         "João Silva",
                         "12345678909",
                         "Pedreiro"
@@ -127,7 +127,7 @@ class MovimentacaoIdempotenciaIntegrationTests {
                 "teste-operacao-123";
 
         String json = json(Map.of(
-                "funcionarioId", funcionario.getId(),
+                "encarregadoId", encarregado.getId(),
                 "contratoId", contrato.getId(),
                 "materialId", material.getId(),
                 "quantidade", 2,
@@ -275,8 +275,8 @@ class MovimentacaoIdempotenciaIntegrationTests {
                 )
         );
 
-        Funcionario funcionario = funcionarioRepository.save(
-                new Funcionario(
+        Usuario encarregado = encarregadoRepository.save(
+                TestUsuarioFactory.encarregado(
                         "João Silva",
                         "12345678909",
                         "Pedreiro"
@@ -292,7 +292,7 @@ class MovimentacaoIdempotenciaIntegrationTests {
         );
 
         String json = json(Map.of(
-                "funcionarioId", funcionario.getId(),
+                "encarregadoId", encarregado.getId(),
                 "contratoId", contrato.getId(),
                 "materialId", material.getId(),
                 "quantidade", 2,
@@ -362,8 +362,8 @@ class MovimentacaoIdempotenciaIntegrationTests {
                 )
         );
 
-        Funcionario funcionario = funcionarioRepository.save(
-                new Funcionario(
+        Usuario encarregado = encarregadoRepository.save(
+                TestUsuarioFactory.encarregado(
                         "João Silva",
                         "12345678909",
                         "Pedreiro"
@@ -382,7 +382,7 @@ class MovimentacaoIdempotenciaIntegrationTests {
                 "operacao-reutilizada-001";
 
         String primeiraOperacao = json(Map.of(
-                "funcionarioId", funcionario.getId(),
+                "encarregadoId", encarregado.getId(),
                 "contratoId", contrato.getId(),
                 "materialId", material.getId(),
                 "quantidade", 2,
@@ -390,7 +390,7 @@ class MovimentacaoIdempotenciaIntegrationTests {
         ));
 
         String segundaOperacao = json(Map.of(
-                "funcionarioId", funcionario.getId(),
+                "encarregadoId", encarregado.getId(),
                 "contratoId", contrato.getId(),
                 "materialId", material.getId(),
                 "quantidade", 5,
@@ -460,8 +460,8 @@ class MovimentacaoIdempotenciaIntegrationTests {
                 )
         );
 
-        Funcionario funcionario = funcionarioRepository.save(
-                new Funcionario(
+        Usuario encarregado = encarregadoRepository.save(
+                TestUsuarioFactory.encarregado(
                         "João Silva",
                         "12345678909",
                         "Pedreiro"
@@ -480,7 +480,7 @@ class MovimentacaoIdempotenciaIntegrationTests {
                 "operacao-concorrente-001";
 
         String json = json(Map.of(
-                "funcionarioId", funcionario.getId(),
+                "encarregadoId", encarregado.getId(),
                 "contratoId", contrato.getId(),
                 "materialId", material.getId(),
                 "quantidade", 2,

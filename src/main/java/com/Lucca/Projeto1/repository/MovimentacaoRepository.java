@@ -14,11 +14,11 @@ import java.util.Collection;
 
 
 public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long> {
-    List<Movimentacao> findByFuncionarioId(Long funcionarioId);
+    List<Movimentacao> findByEncarregadoId(Long encarregadoId);
     List<Movimentacao> findByMaterialId(Long materialId);
     List<Movimentacao> findByContratoId(Long contratoId);
-    List<Movimentacao> findByFuncionarioIdAndContratoIdAndMaterialId(
-            Long funcionarioId,
+    List<Movimentacao> findByEncarregadoIdAndContratoIdAndMaterialId(
+            Long encarregadoId,
             Long contratoId,
             Long materialId
     );
@@ -27,10 +27,11 @@ public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long
     @EntityGraph(attributePaths = {
             "material",
             "registradoPor",
-            "funcionario",
+            "encarregado",
             "contrato",
             "notaFiscal",
-            "movimentacaoOrigem"
+            "movimentacaoOrigem",
+            "requisicao"
     })
     @Query("SELECT movimentacao FROM Movimentacao movimentacao WHERE movimentacao.id = :id")
     Optional<Movimentacao> findByIdComBloqueio(@Param("id") Long id);
@@ -38,20 +39,22 @@ public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long
     @EntityGraph(attributePaths = {
             "material",
             "registradoPor",
-            "funcionario",
+            "encarregado",
             "contrato",
             "notaFiscal",
-            "movimentacaoOrigem"
+            "movimentacaoOrigem",
+            "requisicao"
     })
     List<Movimentacao> findByNotaFiscalIdOrderByIdAsc(Long notaFiscalId);
 
     @EntityGraph(attributePaths = {
             "material",
             "registradoPor",
-            "funcionario",
+            "encarregado",
             "contrato",
             "notaFiscal",
-            "movimentacaoOrigem"
+            "movimentacaoOrigem",
+            "requisicao"
     })
     List<Movimentacao> findByNotaFiscalIdInOrderByNotaFiscalIdAscIdAsc(
             List<Long> notaFiscalIds
@@ -60,10 +63,11 @@ public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long
     @EntityGraph(attributePaths = {
             "material",
             "registradoPor",
-            "funcionario",
+            "encarregado",
             "contrato",
             "notaFiscal",
-            "movimentacaoOrigem"
+            "movimentacaoOrigem",
+            "requisicao"
     })
     Optional<Movimentacao> findByRegistradoPorIdAndIdempotencyKey(
             Long usuarioId,
@@ -73,14 +77,34 @@ public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long
     @EntityGraph(attributePaths = {
             "material",
             "registradoPor",
-            "funcionario",
+            "encarregado",
             "contrato",
             "notaFiscal",
-            "movimentacaoOrigem"
+            "movimentacaoOrigem",
+            "requisicao"
     })
     Optional<Movimentacao> findByMovimentacaoOrigemId(Long movimentacaoOrigemId);
 
     List<Movimentacao> findByMovimentacaoOrigemIdIn(
             Collection<Long> movimentacaoOrigemIds
     );
+
+    @EntityGraph(attributePaths = {
+            "material", "registradoPor", "encarregado", "contrato",
+            "notaFiscal", "movimentacaoOrigem", "requisicao"
+    })
+    List<Movimentacao> findByRequisicaoIdOrderByIdAsc(Long requisicaoId);
+
+    @Query("""
+            SELECT COUNT(m)
+            FROM Movimentacao m
+            WHERE m.requisicao.id = :requisicaoId
+              AND m.tipo = com.Lucca.Projeto1.model.TipoMovimentacao.RETIRADA
+              AND NOT EXISTS (
+                  SELECT 1 FROM Movimentacao e
+                  WHERE e.movimentacaoOrigem = m
+                    AND e.tipo = com.Lucca.Projeto1.model.TipoMovimentacao.ESTORNO_RETIRADA
+              )
+            """)
+    long contarRetiradasValidas(@Param("requisicaoId") Long requisicaoId);
 }

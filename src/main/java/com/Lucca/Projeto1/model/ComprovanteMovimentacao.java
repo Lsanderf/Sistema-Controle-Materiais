@@ -45,14 +45,14 @@ public class ComprovanteMovimentacao {
     @Column(name = "material_descricao", length = 500, updatable = false)
     private String materialDescricao;
 
-    @Column(name = "funcionario_id", updatable = false)
-    private Long funcionarioId;
+    @Column(name = "encarregado_id", updatable = false)
+    private Long encarregadoId;
 
-    @Column(name = "funcionario_nome", length = 150, updatable = false)
-    private String funcionarioNome;
+    @Column(name = "encarregado_nome", length = 150, updatable = false)
+    private String encarregadoNome;
 
-    @Column(name = "funcionario_cargo", length = 100, updatable = false)
-    private String funcionarioCargo;
+    @Column(name = "encarregado_cpf", length = 11, updatable = false)
+    private String encarregadoCpf;
 
     @Column(name = "contrato_id", updatable = false)
     private Long contratoId;
@@ -96,6 +96,12 @@ public class ComprovanteMovimentacao {
     @Column(name = "movimentacao_origem_id", updatable = false)
     private Long movimentacaoOrigemId;
 
+    @Column(name = "requisicao_id", updatable = false)
+    private Long requisicaoId;
+
+    @Column(name = "requisicao_descricao", length = 4000, updatable = false)
+    private String requisicaoDescricao;
+
     @Column(name = "gerado_em", nullable = false, updatable = false)
     private LocalDateTime geradoEm;
 
@@ -118,11 +124,11 @@ public class ComprovanteMovimentacao {
         materialNome = material.getNome();
         materialDescricao = material.getDescricao();
 
-        Funcionario funcionario = movimentacao.getFuncionario();
-        if (funcionario != null) {
-            funcionarioId = funcionario.getId();
-            funcionarioNome = funcionario.getNome();
-            funcionarioCargo = funcionario.getCargo();
+        Usuario encarregado = movimentacao.getEncarregado();
+        if (encarregado != null) {
+            encarregadoId = encarregado.getId();
+            encarregadoNome = encarregado.getNome();
+            encarregadoCpf = encarregado.getCpf();
         }
 
         Contrato contrato = movimentacao.getContrato();
@@ -153,6 +159,12 @@ public class ComprovanteMovimentacao {
         Movimentacao movimentacaoOrigem = movimentacao.getMovimentacaoOrigem();
         if (movimentacaoOrigem != null) {
             movimentacaoOrigemId = movimentacaoOrigem.getId();
+        }
+
+        Requisicao requisicao = movimentacao.getRequisicao();
+        if (requisicao != null) {
+            requisicaoId = requisicao.getId();
+            requisicaoDescricao = requisicao.getDescricao();
         }
 
         geradoEm = LocalDateTime.now();
@@ -199,17 +211,9 @@ public class ComprovanteMovimentacao {
         return materialDescricao;
     }
 
-    public Long getFuncionarioId() {
-        return funcionarioId;
-    }
-
-    public String getFuncionarioNome() {
-        return funcionarioNome;
-    }
-
-    public String getFuncionarioCargo() {
-        return funcionarioCargo;
-    }
+    public Long getEncarregadoId() { return encarregadoId; }
+    public String getEncarregadoNome() { return encarregadoNome; }
+    public String getEncarregadoCpf() { return encarregadoCpf; }
 
     public Long getContratoId() {
         return contratoId;
@@ -266,6 +270,9 @@ public class ComprovanteMovimentacao {
     public Long getMovimentacaoOrigemId() {
         return movimentacaoOrigemId;
     }
+
+    public Long getRequisicaoId() { return requisicaoId; }
+    public String getRequisicaoDescricao() { return requisicaoDescricao; }
 
     public LocalDateTime getGeradoEm() {
         return geradoEm;

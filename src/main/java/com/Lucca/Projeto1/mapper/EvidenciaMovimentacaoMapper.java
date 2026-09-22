@@ -15,12 +15,19 @@ public final class EvidenciaMovimentacaoMapper {
                 evidencia.getId(),
                 evidencia.getTipo(),
                 evidencia.getDataEvidencia(),
-                new EvidenciaMovimentacaoResponse.FuncionarioResumoResponse(
-                        evidencia.getFuncionarioId(),
-                        evidencia.getFuncionarioNome()
+                new EvidenciaMovimentacaoResponse.UsuarioResumoResponse(
+                        evidencia.getEncarregadoId(),
+                        evidencia.getEncarregadoNome(),
+                        null
                 ),
+                evidencia.getAssinanteId() == null ? null
+                        : new EvidenciaMovimentacaoResponse.UsuarioResumoResponse(
+                                evidencia.getAssinanteId(),
+                                evidencia.getAssinanteNome(),
+                                evidencia.getAssinanteUsername()),
                 new EvidenciaMovimentacaoResponse.UsuarioResumoResponse(
                         evidencia.getRegistradaPorId(),
+                        null,
                         evidencia.getRegistradaPorUsername()
                 ),
                 evidencia.getNomeArquivoOriginal(),

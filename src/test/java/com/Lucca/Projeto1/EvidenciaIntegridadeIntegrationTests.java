@@ -1,7 +1,7 @@
 package com.Lucca.Projeto1;
 
 import com.Lucca.Projeto1.model.Contrato;
-import com.Lucca.Projeto1.model.Funcionario;
+import com.Lucca.Projeto1.model.Usuario;
 import com.Lucca.Projeto1.model.Material;
 import com.Lucca.Projeto1.model.Movimentacao;
 import com.Lucca.Projeto1.model.EvidenciaMovimentacao;
@@ -9,7 +9,7 @@ import com.Lucca.Projeto1.model.Role;
 import com.Lucca.Projeto1.repository.ComprovanteMovimentacaoRepository;
 import com.Lucca.Projeto1.repository.ContratoRepository;
 import com.Lucca.Projeto1.repository.EvidenciaMovimentacaoRepository;
-import com.Lucca.Projeto1.repository.FuncionarioRepository;
+import com.Lucca.Projeto1.repository.UsuarioRepository;
 import com.Lucca.Projeto1.repository.MaterialRepository;
 import com.Lucca.Projeto1.repository.MovimentacaoRepository;
 import com.Lucca.Projeto1.repository.UsuarioRepository;
@@ -66,7 +66,7 @@ class EvidenciaIntegridadeIntegrationTests {
     private MaterialRepository materialRepository;
 
     @Autowired
-    private FuncionarioRepository funcionarioRepository;
+    private UsuarioRepository encarregadoRepository;
 
     @Autowired
     private ContratoRepository contratoRepository;
@@ -99,12 +99,12 @@ class EvidenciaIntegridadeIntegrationTests {
         evidenciaRepository.deleteAll();
         comprovanteRepository.deleteAll();
         movimentacaoRepository.deleteAll();
-        funcionarioRepository.deleteAll();
+        encarregadoRepository.deleteAll();
         contratoRepository.deleteAll();
         materialRepository.deleteAll();
         usuarioRepository.deleteAll();
 
-        usuarioService.criarUsuario(
+        TestUsuarioFactory.criarUsuario(usuarioService,
                 "operador",
                 SENHA_OPERADOR,
                 Role.OPERADOR,
@@ -134,8 +134,8 @@ class EvidenciaIntegridadeIntegrationTests {
                 )
         );
 
-        Funcionario funcionario = funcionarioRepository.save(
-                new Funcionario(
+        Usuario encarregado = encarregadoRepository.save(
+                TestUsuarioFactory.encarregado(
                         "João Silva",
                         "12345678909",
                         "Pedreiro"
@@ -157,8 +157,8 @@ class EvidenciaIntegridadeIntegrationTests {
         mockMvc.perform(
                         movimentacaoAssinada(
                                 json(Map.of(
-                                        "funcionarioId",
-                                        funcionario.getId(),
+                                        "encarregadoId",
+                                        encarregado.getId(),
 
                                         "contratoId",
                                         contrato.getId(),

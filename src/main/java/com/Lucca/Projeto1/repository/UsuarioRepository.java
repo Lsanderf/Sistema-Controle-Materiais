@@ -16,6 +16,12 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
     boolean existsByUsernameIgnoreCase(String username);
 
+    boolean existsByCpf(String cpf);
+
+    Optional<Usuario> findByCpf(String cpf);
+
+    List<Usuario> findByRoleAndAtivoTrueOrderByNomeAsc(Role role);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             SELECT u

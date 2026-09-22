@@ -1,14 +1,14 @@
 package com.Lucca.Projeto1;
 
 import com.Lucca.Projeto1.model.Contrato;
-import com.Lucca.Projeto1.model.Funcionario;
+import com.Lucca.Projeto1.model.Usuario;
 import com.Lucca.Projeto1.model.Material;
 import com.Lucca.Projeto1.model.Movimentacao;
 import com.Lucca.Projeto1.model.Role;
 import com.Lucca.Projeto1.model.TipoMovimentacao;
 import com.Lucca.Projeto1.model.Usuario;
 import com.Lucca.Projeto1.repository.ContratoRepository;
-import com.Lucca.Projeto1.repository.FuncionarioRepository;
+import com.Lucca.Projeto1.repository.UsuarioRepository;
 import com.Lucca.Projeto1.repository.MaterialRepository;
 import com.Lucca.Projeto1.repository.MovimentacaoRepository;
 import com.Lucca.Projeto1.repository.UsuarioRepository;
@@ -54,7 +54,7 @@ class DataInativacaoIntegrationTests {
     private UsuarioRepository usuarioRepository;
 
     @Autowired
-    private FuncionarioRepository funcionarioRepository;
+    private UsuarioRepository encarregadoRepository;
 
     @Autowired
     private ContratoRepository contratoRepository;
@@ -73,18 +73,18 @@ class DataInativacaoIntegrationTests {
     @BeforeEach
     void prepararBanco() throws Exception {
         movimentacaoRepository.deleteAll();
-        funcionarioRepository.deleteAll();
+        encarregadoRepository.deleteAll();
         contratoRepository.deleteAll();
         materialRepository.deleteAll();
         usuarioRepository.deleteAll();
 
-        usuarioService.criarUsuario(
+        TestUsuarioFactory.criarUsuario(usuarioService,
                 "admin",
                 SENHA_ADMIN,
                 Role.ADMIN,
                 true
         );
-        usuarioService.criarUsuario(
+        TestUsuarioFactory.criarUsuario(usuarioService,
                 "operador",
                 "senhaOperador123",
                 Role.OPERADOR,
@@ -99,11 +99,11 @@ class DataInativacaoIntegrationTests {
         Usuario usuario = usuarioRepository
                 .findByUsernameIgnoreCase("operador")
                 .orElseThrow();
-        Funcionario funcionario = criarFuncionario();
+        Usuario encarregado = criarUsuario();
         Contrato contrato = criarContrato();
 
         validarDataNulaNoResponse("/usuarios/{id}", usuario.getId());
-        validarDataNulaNoResponse("/funcionarios/{id}", funcionario.getId());
+        validarDataNulaNoResponse("/usuarios/{id}", encarregado.getId());
         validarDataNulaNoResponse("/contratos/{id}", contrato.getId());
     }
 
@@ -139,6 +139,9 @@ class DataInativacaoIntegrationTests {
                         .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
+                                "nome", usuario.getNome(),
+                                "cpf", usuario.getCpf(),
+                                "celular", usuario.getCelular(),
                                 "username", "operador_editado",
                                 "role", "OPERADOR"
                         ))))
@@ -159,46 +162,48 @@ class DataInativacaoIntegrationTests {
     }
 
     @Test
-    void funcionarioRegistraPreservaELimpaDataSemAfetarEdicao()
+    void encarregadoRegistraPreservaELimpaDataSemAfetarEdicao()
             throws Exception {
-        Funcionario funcionario = criarFuncionario();
+        Usuario encarregado = criarUsuario();
         LocalDateTime antes = LocalDateTime.now();
 
-        mockMvc.perform(patch("/funcionarios/{id}/desativar", funcionario.getId())
+        mockMvc.perform(patch("/usuarios/{id}/desativar", encarregado.getId())
                         .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
                 .andExpect(status().isOk());
 
         LocalDateTime depois = LocalDateTime.now();
-        LocalDateTime dataOriginal = buscarFuncionario(funcionario.getId())
+        LocalDateTime dataOriginal = buscarUsuario(encarregado.getId())
                 .getDataInativacao();
         assertTimestampEntre(dataOriginal, antes, depois);
 
-        mockMvc.perform(patch("/funcionarios/{id}/desativar", funcionario.getId())
+        mockMvc.perform(patch("/usuarios/{id}/desativar", encarregado.getId())
                         .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
-                .andExpect(status().isOk());
+                .andExpect(status().isConflict());
         assertEquals(
                 dataOriginal,
-                buscarFuncionario(funcionario.getId()).getDataInativacao()
+                buscarUsuario(encarregado.getId()).getDataInativacao()
         );
 
-        mockMvc.perform(put("/funcionarios/{id}", funcionario.getId())
+        mockMvc.perform(put("/usuarios/{id}", encarregado.getId())
                         .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
                                 "nome", "Maria Atualizada",
                                 "cpf", "12345678909",
-                                "cargo", "Engenheira"
+                                "celular", encarregado.getCelular(),
+                                "username", encarregado.getUsername(),
+                                "role", "ENCARREGADO"
                         ))))
                 .andExpect(status().isOk());
         assertEquals(
                 dataOriginal,
-                buscarFuncionario(funcionario.getId()).getDataInativacao()
+                buscarUsuario(encarregado.getId()).getDataInativacao()
         );
 
-        mockMvc.perform(patch("/funcionarios/{id}/ativar", funcionario.getId())
+        mockMvc.perform(patch("/usuarios/{id}/ativar", encarregado.getId())
                         .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
                 .andExpect(status().isOk());
-        assertNull(buscarFuncionario(funcionario.getId()).getDataInativacao());
+        assertNull(buscarUsuario(encarregado.getId()).getDataInativacao());
     }
 
     @Test
@@ -279,9 +284,9 @@ class DataInativacaoIntegrationTests {
         assertTrue(response.get("dataInativacao").isNull());
     }
 
-    private Funcionario criarFuncionario() {
-        return funcionarioRepository.save(
-                new Funcionario("Maria Silva", "12345678909", "Arquiteta")
+    private Usuario criarUsuario() {
+        return encarregadoRepository.save(
+                TestUsuarioFactory.encarregado("Maria Silva", "12345678909", "Arquiteta")
         );
     }
 
@@ -292,12 +297,12 @@ class DataInativacaoIntegrationTests {
     }
 
     private Movimentacao criarMovimentacao(Contrato contrato) {
-        Funcionario funcionario = criarFuncionario();
+        Usuario encarregado = criarUsuario();
         Material material = materialRepository.save(
                 new Material("Capacete", "ProteÃ§Ã£o", 10)
         );
         Movimentacao movimentacao = new Movimentacao();
-        movimentacao.setFuncionario(funcionario);
+        movimentacao.setEncarregado(encarregado);
         movimentacao.setContrato(contrato);
         movimentacao.setMaterial(material);
         movimentacao.setQuantidade(1);
@@ -311,10 +316,6 @@ class DataInativacaoIntegrationTests {
 
     private Usuario buscarUsuario(Long id) {
         return usuarioRepository.findById(id).orElseThrow();
-    }
-
-    private Funcionario buscarFuncionario(Long id) {
-        return funcionarioRepository.findById(id).orElseThrow();
     }
 
     private Contrato buscarContrato(Long id) {

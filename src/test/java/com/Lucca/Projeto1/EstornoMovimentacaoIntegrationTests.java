@@ -1,7 +1,7 @@
 package com.Lucca.Projeto1;
 
 import com.Lucca.Projeto1.model.Contrato;
-import com.Lucca.Projeto1.model.Funcionario;
+import com.Lucca.Projeto1.model.Usuario;
 import com.Lucca.Projeto1.model.Material;
 import com.Lucca.Projeto1.model.Movimentacao;
 import com.Lucca.Projeto1.model.NotaFiscalEntrada;
@@ -12,7 +12,7 @@ import com.Lucca.Projeto1.model.Usuario;
 import com.Lucca.Projeto1.repository.ComprovanteMovimentacaoRepository;
 import com.Lucca.Projeto1.repository.ContratoRepository;
 import com.Lucca.Projeto1.repository.EvidenciaMovimentacaoRepository;
-import com.Lucca.Projeto1.repository.FuncionarioRepository;
+import com.Lucca.Projeto1.repository.UsuarioRepository;
 import com.Lucca.Projeto1.repository.MaterialRepository;
 import com.Lucca.Projeto1.repository.MovimentacaoRepository;
 import com.Lucca.Projeto1.repository.NotaFiscalEntradaRepository;
@@ -60,7 +60,7 @@ class EstornoMovimentacaoIntegrationTests {
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
     @Autowired private MaterialRepository materialRepository;
-    @Autowired private FuncionarioRepository funcionarioRepository;
+    @Autowired private UsuarioRepository encarregadoRepository;
     @Autowired private ContratoRepository contratoRepository;
     @Autowired private MovimentacaoRepository movimentacaoRepository;
     @Autowired private EvidenciaMovimentacaoRepository evidenciaRepository;
@@ -71,20 +71,20 @@ class EstornoMovimentacaoIntegrationTests {
 
     private String adminToken;
     private String operadorToken;
-    private String consultaToken;
+    private String gerenteToken;
     private Usuario admin;
 
     @BeforeEach
     void prepararBanco() throws Exception {
         limparBanco();
 
-        usuarioService.criarUsuario("admin", SENHA, Role.ADMIN, true);
-        usuarioService.criarUsuario("operador", SENHA, Role.OPERADOR, true);
-        usuarioService.criarUsuario("consulta", SENHA, Role.CONSULTA, true);
+        TestUsuarioFactory.criarUsuario(usuarioService, "admin", SENHA, Role.ADMIN, true);
+        TestUsuarioFactory.criarUsuario(usuarioService, "operador", SENHA, Role.OPERADOR, true);
+        TestUsuarioFactory.criarUsuario(usuarioService, "gerente", SENHA, Role.GERENTE, true);
         admin = usuarioRepository.findByUsernameIgnoreCase("admin").orElseThrow();
         adminToken = token("admin");
         operadorToken = token("operador");
-        consultaToken = token("consulta");
+        gerenteToken = token("gerente");
     }
 
     @AfterEach
@@ -93,7 +93,7 @@ class EstornoMovimentacaoIntegrationTests {
         comprovanteRepository.deleteAllInBatch();
         movimentacaoRepository.deleteAllInBatch();
         notaFiscalRepository.deleteAllInBatch();
-        funcionarioRepository.deleteAllInBatch();
+        encarregadoRepository.deleteAllInBatch();
         contratoRepository.deleteAllInBatch();
         materialRepository.deleteAllInBatch();
         usuarioRepository.deleteAllInBatch();
@@ -227,12 +227,12 @@ class EstornoMovimentacaoIntegrationTests {
     }
 
     @Test
-    void funcionarioEContratoInativosNaoImpedemCorrecaoHistorica() throws Exception {
+    void encarregadoEContratoInativosNaoImpedemCorrecaoHistorica() throws Exception {
         Contexto contexto = criarContexto("Inativos", "93541134780", 10);
         long origemId = registrar(contexto, TipoMovimentacao.RETIRADA, 4);
-        contexto.funcionario().setAtivo(false);
+        contexto.encarregado().setAtivo(false);
         contexto.contrato().setAtivo(false);
-        funcionarioRepository.save(contexto.funcionario());
+        encarregadoRepository.save(contexto.encarregado());
         contratoRepository.save(contexto.contrato());
 
         estornar(adminToken, origemId, "Correção histórica", "estorno-inativos")
@@ -258,7 +258,7 @@ class EstornoMovimentacaoIntegrationTests {
                 .andExpect(status().isUnauthorized());
         estornar(operadorToken, origem.getId(), "Correção", "estorno-operador")
                 .andExpect(status().isForbidden());
-        estornar(consultaToken, origem.getId(), "Correção", "estorno-consulta")
+        estornar(gerenteToken, origem.getId(), "Correção", "estorno-gerente")
                 .andExpect(status().isForbidden());
         estornar(adminToken, origem.getId(), "Correção", "estorno-admin")
                 .andExpect(status().isCreated());
@@ -403,7 +403,7 @@ class EstornoMovimentacaoIntegrationTests {
             int quantidade
     ) throws Exception {
         return mockMvc.perform(movimentacaoAssinada(json(Map.of(
-                                "funcionarioId", contexto.funcionario().getId(),
+                                "encarregadoId", contexto.encarregado().getId(),
                                 "contratoId", contexto.contrato().getId(),
                                 "materialId", contexto.material().getId(),
                                 "quantidade", quantidade,
@@ -420,7 +420,7 @@ class EstornoMovimentacaoIntegrationTests {
             Movimentacao origem
     ) {
         Movimentacao movimentacao = new Movimentacao();
-        movimentacao.setFuncionario(tipo == TipoMovimentacao.ENTRADA ? null : contexto.funcionario());
+        movimentacao.setEncarregado(tipo == TipoMovimentacao.ENTRADA ? null : contexto.encarregado());
         movimentacao.setContrato(tipo == TipoMovimentacao.ENTRADA ? null : contexto.contrato());
         movimentacao.setMaterial(contexto.material());
         movimentacao.setQuantidade(quantidade);
@@ -450,7 +450,7 @@ class EstornoMovimentacaoIntegrationTests {
 
     private Contexto criarContexto(String sufixo, String cpf, int estoque) {
         return new Contexto(
-                funcionarioRepository.save(new Funcionario("Funcionário " + sufixo, cpf, "Cargo")),
+                encarregadoRepository.save(TestUsuarioFactory.encarregado("Funcionário " + sufixo, cpf, "Cargo")),
                 contratoRepository.save(new Contrato("Contrato " + sufixo, "Descrição", true)),
                 materialRepository.save(new Material("Material " + sufixo, "Descrição", estoque))
         );
@@ -482,7 +482,7 @@ class EstornoMovimentacaoIntegrationTests {
     }
 
     private record Contexto(
-            Funcionario funcionario,
+            Usuario encarregado,
             Contrato contrato,
             Material material
     ) {

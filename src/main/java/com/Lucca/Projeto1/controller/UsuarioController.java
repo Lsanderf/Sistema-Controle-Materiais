@@ -3,6 +3,8 @@ package com.Lucca.Projeto1.controller;
 import com.Lucca.Projeto1.dto.usuario.UsuarioAtualizacaoRequest;
 import com.Lucca.Projeto1.dto.usuario.UsuarioRequest;
 import com.Lucca.Projeto1.dto.usuario.UsuarioResponse;
+import com.Lucca.Projeto1.dto.usuario.EncarregadoRequest;
+import com.Lucca.Projeto1.dto.usuario.EncarregadoResumoResponse;
 import com.Lucca.Projeto1.service.UsuarioService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -39,6 +41,19 @@ public class UsuarioController {
             @PathVariable Long id
     ) {
         return ResponseEntity.ok(usuarioService.buscarPorId(id));
+    }
+
+    @GetMapping("/encarregados")
+    public ResponseEntity<List<EncarregadoResumoResponse>> listarEncarregados() {
+        return ResponseEntity.ok(usuarioService.listarEncarregadosAtivos());
+    }
+
+    @PostMapping("/encarregados")
+    public ResponseEntity<EncarregadoResumoResponse> cadastrarEncarregado(
+            @Valid @RequestBody EncarregadoRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(usuarioService.cadastrarEncarregado(request));
     }
 
     @PostMapping

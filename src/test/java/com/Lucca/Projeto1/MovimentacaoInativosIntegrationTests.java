@@ -1,14 +1,14 @@
 package com.Lucca.Projeto1;
 
 import com.Lucca.Projeto1.model.Contrato;
-import com.Lucca.Projeto1.model.Funcionario;
+import com.Lucca.Projeto1.model.Usuario;
 import com.Lucca.Projeto1.model.Material;
 import com.Lucca.Projeto1.model.Role;
 import com.Lucca.Projeto1.model.TipoMovimentacao;
 import com.Lucca.Projeto1.repository.ComprovanteMovimentacaoRepository;
 import com.Lucca.Projeto1.repository.ContratoRepository;
 import com.Lucca.Projeto1.repository.EvidenciaMovimentacaoRepository;
-import com.Lucca.Projeto1.repository.FuncionarioRepository;
+import com.Lucca.Projeto1.repository.UsuarioRepository;
 import com.Lucca.Projeto1.repository.MaterialRepository;
 import com.Lucca.Projeto1.repository.MovimentacaoRepository;
 import com.Lucca.Projeto1.repository.NotaFiscalEntradaRepository;
@@ -50,7 +50,7 @@ class MovimentacaoInativosIntegrationTests {
     @Autowired private ObjectMapper objectMapper;
     @Autowired private UsuarioService usuarioService;
     @Autowired private UsuarioRepository usuarioRepository;
-    @Autowired private FuncionarioRepository funcionarioRepository;
+    @Autowired private UsuarioRepository encarregadoRepository;
     @Autowired private ContratoRepository contratoRepository;
     @Autowired private MaterialRepository materialRepository;
     @Autowired private MovimentacaoRepository movimentacaoRepository;
@@ -58,7 +58,7 @@ class MovimentacaoInativosIntegrationTests {
     @Autowired private ComprovanteMovimentacaoRepository comprovanteRepository;
     @Autowired private NotaFiscalEntradaRepository notaFiscalRepository;
 
-    private Funcionario funcionario;
+    private Usuario encarregado;
     private Contrato contrato;
     private Material material;
     private String operadorToken;
@@ -66,10 +66,10 @@ class MovimentacaoInativosIntegrationTests {
     @BeforeEach
     void preparar() throws Exception {
         limparBanco();
-        usuarioService.criarUsuario("operador-rn01", SENHA, Role.OPERADOR, true);
+        TestUsuarioFactory.criarUsuario(usuarioService, "operador-rn01", SENHA, Role.OPERADOR, true);
         operadorToken = token("operador-rn01");
-        funcionario = funcionarioRepository.save(
-                new Funcionario("Funcionário RN-01", "52998224725", "Técnico")
+        encarregado = encarregadoRepository.save(
+                TestUsuarioFactory.encarregado("Funcionário RN-01", "52998224725", "Técnico")
         );
         contrato = contratoRepository.save(
                 new Contrato("Contrato RN-01", "Teste de devolução histórica", true)
@@ -85,14 +85,14 @@ class MovimentacaoInativosIntegrationTests {
         comprovanteRepository.deleteAllInBatch();
         movimentacaoRepository.deleteAllInBatch();
         notaFiscalRepository.deleteAllInBatch();
-        funcionarioRepository.deleteAllInBatch();
+        encarregadoRepository.deleteAllInBatch();
         contratoRepository.deleteAllInBatch();
         materialRepository.deleteAllInBatch();
         usuarioRepository.deleteAllInBatch();
     }
 
     @Test
-    void retiradaComFuncionarioEContratoAtivosTemSucesso() throws Exception {
+    void retiradaComUsuarioEContratoAtivosTemSucesso() throws Exception {
         registrar(TipoMovimentacao.RETIRADA, 6, null)
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.usuarioUsername").value("operador-rn01"));
@@ -102,13 +102,13 @@ class MovimentacaoInativosIntegrationTests {
     }
 
     @Test
-    void retiradaComFuncionarioInativoFalha() throws Exception {
-        inativarFuncionario();
+    void retiradaComUsuarioInativoFalha() throws Exception {
+        inativarUsuario();
 
         registrar(TipoMovimentacao.RETIRADA, 1, null)
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.erro").value(
-                        "Não é possível registrar retirada para um funcionário inativo"
+                        "Não é possível registrar retirada para um encarregado inativo"
                 ));
 
         assertEquals(20, estoque());
@@ -130,10 +130,10 @@ class MovimentacaoInativosIntegrationTests {
     }
 
     @Test
-    void devolucaoComFuncionarioInativoTemSucessoEAtualizaEstoque() throws Exception {
+    void devolucaoComUsuarioInativoTemSucessoEAtualizaEstoque() throws Exception {
         registrar(TipoMovimentacao.RETIRADA, 10, null)
                 .andExpect(status().isCreated());
-        inativarFuncionario();
+        inativarUsuario();
 
         registrar(TipoMovimentacao.DEVOLUCAO, 4, null)
                 .andExpect(status().isCreated())
@@ -158,10 +158,10 @@ class MovimentacaoInativosIntegrationTests {
     }
 
     @Test
-    void devolucaoComFuncionarioEContratoInativosTemSucesso() throws Exception {
+    void devolucaoComUsuarioEContratoInativosTemSucesso() throws Exception {
         registrar(TipoMovimentacao.RETIRADA, 10, null)
                 .andExpect(status().isCreated());
-        inativarFuncionario();
+        inativarUsuario();
         inativarContrato();
 
         registrar(TipoMovimentacao.DEVOLUCAO, 10, null)
@@ -176,7 +176,7 @@ class MovimentacaoInativosIntegrationTests {
             throws Exception {
         registrar(TipoMovimentacao.RETIRADA, 10, null)
                 .andExpect(status().isCreated());
-        inativarFuncionario();
+        inativarUsuario();
         inativarContrato();
 
         registrar(TipoMovimentacao.DEVOLUCAO, 11, null)
@@ -192,7 +192,7 @@ class MovimentacaoInativosIntegrationTests {
     @Test
     void devolucaoSemSaldoPendenteContinuaFalhandoComVinculosInativos()
             throws Exception {
-        inativarFuncionario();
+        inativarUsuario();
         inativarContrato();
 
         registrar(TipoMovimentacao.DEVOLUCAO, 1, null)
@@ -206,10 +206,10 @@ class MovimentacaoInativosIntegrationTests {
     }
 
     @Test
-    void devolucaoComFuncionarioInativoContinuaIdempotente() throws Exception {
+    void devolucaoComUsuarioInativoContinuaIdempotente() throws Exception {
         registrar(TipoMovimentacao.RETIRADA, 8, null)
                 .andExpect(status().isCreated());
-        inativarFuncionario();
+        inativarUsuario();
 
         MvcResult primeira = registrar(
                 TipoMovimentacao.DEVOLUCAO,
@@ -225,7 +225,7 @@ class MovimentacaoInativosIntegrationTests {
         assertEquals(json(primeira).get("id").asLong(), json(repetida).get("id").asLong());
         assertEquals(15, estoque());
         assertEquals(2, movimentacaoRepository.count());
-        assertEquals(2, evidenciaRepository.count());
+        assertEquals(3, evidenciaRepository.count());
         assertEquals(2, comprovanteRepository.count());
     }
 
@@ -235,7 +235,7 @@ class MovimentacaoInativosIntegrationTests {
             String idempotencyKey
     ) throws Exception {
         String payload = objectMapper.writeValueAsString(Map.of(
-                "funcionarioId", funcionario.getId(),
+                "encarregadoId", encarregado.getId(),
                 "contratoId", contrato.getId(),
                 "materialId", material.getId(),
                 "quantidade", quantidade,
@@ -249,10 +249,10 @@ class MovimentacaoInativosIntegrationTests {
         return mockMvc.perform(request);
     }
 
-    private void inativarFuncionario() {
-        funcionario.setAtivo(false);
-        funcionario.setDataInativacao(LocalDateTime.now());
-        funcionario = funcionarioRepository.saveAndFlush(funcionario);
+    private void inativarUsuario() {
+        encarregado.setAtivo(false);
+        encarregado.setDataInativacao(LocalDateTime.now());
+        encarregado = encarregadoRepository.saveAndFlush(encarregado);
     }
 
     private void inativarContrato() {

@@ -27,9 +27,6 @@ import org.springframework.security.oauth2.server.resource.web.authentication.Be
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;import org.springframework.context.annotation.Bean;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 
@@ -49,9 +46,7 @@ public class SecurityConfig {
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost:5173"
-        ));
+        configuration.setAllowedOriginPatterns(allowedOriginPatterns());
 
         configuration.setAllowedMethods(List.of(
                 "GET",
@@ -117,16 +112,36 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/usuarios/encarregados")
+                        .hasAnyRole("ADMIN", "OPERADOR", "GERENTE")
+                        .requestMatchers(HttpMethod.POST, "/usuarios/encarregados")
+                        .hasAnyRole("ADMIN", "GERENTE")
+                        .requestMatchers("/usuarios", "/usuarios/**")
+                        .hasRole("ADMIN")
+
+                        .requestMatchers(HttpMethod.GET, "/requisicoes/minhas")
+                        .hasRole("ENCARREGADO")
+                        .requestMatchers(HttpMethod.GET, "/requisicoes/pendentes")
+                        .hasAnyRole("ADMIN", "OPERADOR")
+                        .requestMatchers(HttpMethod.POST, "/requisicoes/*/finalizar-atendimento")
+                        .hasAnyRole("ADMIN", "OPERADOR")
+                        .requestMatchers(HttpMethod.POST, "/requisicoes/*/confirmar")
+                        .hasRole("ENCARREGADO")
+                        .requestMatchers(HttpMethod.POST, "/requisicoes")
+                        .hasAnyRole("ADMIN", "GERENTE")
+                        .requestMatchers(HttpMethod.GET, "/requisicoes")
+                        .hasAnyRole("ADMIN", "GERENTE")
+                        .requestMatchers(HttpMethod.GET, "/requisicoes/*")
+                        .hasAnyRole("ADMIN", "OPERADOR", "GERENTE", "ENCARREGADO")
+
                         .requestMatchers(HttpMethod.GET, "/materiais", "/materiais/**")
-                        .hasAnyRole("ADMIN", "OPERADOR", "CONSULTA")
-                        .requestMatchers(HttpMethod.GET, "/funcionarios", "/funcionarios/**")
-                        .hasAnyRole("ADMIN", "OPERADOR", "CONSULTA")
+                        .hasAnyRole("ADMIN", "OPERADOR")
                         .requestMatchers(HttpMethod.GET, "/contratos", "/contratos/**")
-                        .hasAnyRole("ADMIN", "OPERADOR", "CONSULTA")
+                        .hasAnyRole("ADMIN", "OPERADOR", "GERENTE")
                         .requestMatchers(HttpMethod.GET, "/movimentacoes", "/movimentacoes/**")
-                        .hasAnyRole("ADMIN", "OPERADOR", "CONSULTA")
+                        .hasAnyRole("ADMIN", "OPERADOR")
                         .requestMatchers(HttpMethod.GET, "/notas-fiscais", "/notas-fiscais/**")
-                        .hasAnyRole("ADMIN", "OPERADOR", "CONSULTA")
+                        .hasAnyRole("ADMIN", "OPERADOR")
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/movimentacoes/*/estorno"
@@ -155,12 +170,8 @@ public class SecurityConfig {
                         .hasAnyRole("ADMIN", "OPERADOR")
                         .requestMatchers("/materiais", "/materiais/**")
                         .hasRole("ADMIN")
-                        .requestMatchers("/funcionarios", "/funcionarios/**")
-                        .hasRole("ADMIN")
                         .requestMatchers("/contratos", "/contratos/**")
-                        .hasRole("ADMIN")
-                        .requestMatchers("/usuarios", "/usuarios/**")
-                        .hasRole("ADMIN")
+                        .hasAnyRole("ADMIN", "GERENTE")
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(resourceServer -> resourceServer
@@ -238,26 +249,4 @@ public class SecurityConfig {
         return allowedOrigins;
     }
 
-    private List<String> allowedOrigins() {
-        String origins = environment.getProperty("APP_CORS_ALLOWED_ORIGINS");
-
-        if (origins == null || origins.isBlank()) {
-            throw new IllegalStateException(
-                    "A variável de ambiente APP_CORS_ALLOWED_ORIGINS deve ser configurada"
-            );
-        }
-
-        List<String> allowedOrigins = Arrays.stream(origins.split(","))
-                .map(String::trim)
-                .filter(origin -> !origin.isBlank())
-                .toList();
-
-        if (allowedOrigins.isEmpty() || allowedOrigins.contains("*")) {
-            throw new IllegalStateException(
-                    "APP_CORS_ALLOWED_ORIGINS deve listar origens explícitas"
-            );
-        }
-
-        return allowedOrigins;
-    }
 }

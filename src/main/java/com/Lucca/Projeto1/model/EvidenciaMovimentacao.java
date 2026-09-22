@@ -43,11 +43,20 @@ public class EvidenciaMovimentacao {
     @Column(name = "data_evidencia", nullable = false, updatable = false)
     private LocalDateTime dataEvidencia;
 
-    @Column(name = "funcionario_id", nullable = false, updatable = false)
-    private Long funcionarioId;
+    @Column(name = "encarregado_id", nullable = false, updatable = false)
+    private Long encarregadoId;
 
-    @Column(name = "funcionario_nome", nullable = false, length = 150, updatable = false)
-    private String funcionarioNome;
+    @Column(name = "encarregado_nome", nullable = false, length = 150, updatable = false)
+    private String encarregadoNome;
+
+    @Column(name = "assinante_id", updatable = false)
+    private Long assinanteId;
+
+    @Column(name = "assinante_nome", length = 150, updatable = false)
+    private String assinanteNome;
+
+    @Column(name = "assinante_username", length = 100, updatable = false)
+    private String assinanteUsername;
 
     @Column(name = "registrada_por_id", nullable = false, updatable = false)
     private Long registradaPorId;
@@ -77,8 +86,11 @@ public class EvidenciaMovimentacao {
             Long movimentacaoId,
             TipoEvidenciaMovimentacao tipo,
             LocalDateTime dataEvidencia,
-            Long funcionarioId,
-            String funcionarioNome,
+            Long encarregadoId,
+            String encarregadoNome,
+            Long assinanteId,
+            String assinanteNome,
+            String assinanteUsername,
             Long registradaPorId,
             String registradaPorUsername,
             String storageKey,
@@ -90,8 +102,11 @@ public class EvidenciaMovimentacao {
         this.movimentacaoId = movimentacaoId;
         this.tipo = tipo;
         this.dataEvidencia = dataEvidencia;
-        this.funcionarioId = funcionarioId;
-        this.funcionarioNome = funcionarioNome;
+        this.encarregadoId = encarregadoId;
+        this.encarregadoNome = encarregadoNome;
+        this.assinanteId = assinanteId;
+        this.assinanteNome = assinanteNome;
+        this.assinanteUsername = assinanteUsername;
         this.registradaPorId = registradaPorId;
         this.registradaPorUsername = registradaPorUsername;
         this.storageKey = storageKey;
@@ -117,13 +132,11 @@ public class EvidenciaMovimentacao {
         return dataEvidencia;
     }
 
-    public Long getFuncionarioId() {
-        return funcionarioId;
-    }
-
-    public String getFuncionarioNome() {
-        return funcionarioNome;
-    }
+    public Long getEncarregadoId() { return encarregadoId; }
+    public String getEncarregadoNome() { return encarregadoNome; }
+    public Long getAssinanteId() { return assinanteId; }
+    public String getAssinanteNome() { return assinanteNome; }
+    public String getAssinanteUsername() { return assinanteUsername; }
 
     public Long getRegistradaPorId() {
         return registradaPorId;

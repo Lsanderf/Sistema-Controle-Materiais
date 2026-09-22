@@ -1,14 +1,12 @@
 package com.Lucca.Projeto1.dto.usuario;
 
-import com.Lucca.Projeto1.model.Role;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import org.hibernate.validator.constraints.br.CPF;
 
-public class UsuarioAtualizacaoRequest {
-
+public class EncarregadoRequest {
     @NotBlank(message = "O nome é obrigatório")
     @Size(max = 150, message = "O nome deve possuir no máximo 150 caracteres")
     private String nome;
@@ -22,21 +20,12 @@ public class UsuarioAtualizacaoRequest {
     private String celular;
 
     @NotBlank(message = "O nome de usuário é obrigatório")
-    @Size(
-            min = 3,
-            max = 100,
-            message = "O nome de usuário deve ter entre 3 e 100 caracteres"
-    )
+    @Size(min = 3, max = 100, message = "O nome de usuário deve ter entre 3 e 100 caracteres")
     private String username;
 
-    @NotNull(message = "O papel do usuário é obrigatório")
-    private Role role;
-
-    @Pattern(
-            regexp = "(?s)^(?:\\s*|.{8,100})$",
-            message = "A nova senha deve ter entre 8 e 100 caracteres"
-    )
-    private String novaSenha;
+    @NotBlank(message = "A senha é obrigatória")
+    @Size(min = 8, max = 100, message = "A senha deve ter entre 8 e 100 caracteres")
+    private String password;
 
     public String getNome() { return nome; }
     public void setNome(String nome) { this.nome = nome; }
@@ -44,28 +33,13 @@ public class UsuarioAtualizacaoRequest {
     public void setCpf(String cpf) { this.cpf = cpf; }
     public String getCelular() { return celular; }
     public void setCelular(String celular) { this.celular = celular; }
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
 
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public Role getRole() {
-        return role;
-    }
-
-    public void setRole(Role role) {
-        this.role = role;
-    }
-
-    public String getNovaSenha() {
-        return novaSenha;
-    }
-
-    public void setNovaSenha(String novaSenha) {
-        this.novaSenha = novaSenha;
+    @JsonAnySetter
+    public void rejeitarCampoDesconhecido(String campo, Object valor) {
+        throw new IllegalArgumentException("Campo não permitido: " + campo);
     }
 }

@@ -148,14 +148,14 @@ public class MovimentacaoController {
                 .body(arquivo.recurso());
     }
 
-    @GetMapping("/funcionario/{funcionarioId}")
+    @GetMapping("/encarregado/{encarregadoId}")
     public ResponseEntity<List<MovimentacaoResponse>>
-    listarPorFuncionario(
-            @PathVariable Long funcionarioId
+    listarPorEncarregado(
+            @PathVariable Long encarregadoId
     ) {
         return ResponseEntity.ok(
                 movimentacaoService
-                        .listarPorFuncionario(funcionarioId)
+                        .listarPorEncarregado(encarregadoId)
         );
     }
 

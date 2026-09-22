@@ -14,11 +14,12 @@ public record ComprovanteMovimentacaoResponse(
         LocalDateTime dataFinalizacao,
         String observacao,
         MaterialResumoResponse material,
-        FuncionarioResumoResponse funcionario,
+        EncarregadoResumoResponse encarregado,
         ContratoResumoResponse contrato,
         UsuarioResumoResponse registradoPor,
         NotaFiscalResumoResponse notaFiscal,
         Long movimentacaoOrigemId,
+        RequisicaoResumoResponse requisicao,
         List<EvidenciaMovimentacaoResponse> evidencias,
         LocalDateTime geradoEm,
         Integer versao
@@ -30,10 +31,9 @@ public record ComprovanteMovimentacaoResponse(
     ) {
     }
 
-    public record FuncionarioResumoResponse(
+    public record EncarregadoResumoResponse(
             Long id,
-            String nome,
-            String cargo
+            String nome
     ) {
     }
 
@@ -46,6 +46,8 @@ public record ComprovanteMovimentacaoResponse(
 
     public record UsuarioResumoResponse(Long id, String username) {
     }
+
+    public record RequisicaoResumoResponse(Long id, String descricao) {}
 
     public record NotaFiscalResumoResponse(
             Long id,
