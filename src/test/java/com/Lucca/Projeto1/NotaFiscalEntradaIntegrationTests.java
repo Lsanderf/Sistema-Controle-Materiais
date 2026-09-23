@@ -47,7 +47,7 @@ class NotaFiscalEntradaIntegrationTests {
 
     private static final String SENHA_ADMIN = "senhaAdmin123";
     private static final String SENHA_OPERADOR = "senhaOperador123";
-    private static final String SENHA_CONSULTA = "senhaConsulta123";
+    private static final String SENHA_GERENTE = "senhaGerente123";
     private static final String CNPJ_VALIDO = "11.222.333/0001-81";
 
     @Autowired
@@ -73,7 +73,7 @@ class NotaFiscalEntradaIntegrationTests {
 
     private String adminToken;
     private String operadorToken;
-    private String consultaToken;
+    private String gerenteToken;
 
     @BeforeEach
     void prepararBanco() throws Exception {
@@ -82,28 +82,31 @@ class NotaFiscalEntradaIntegrationTests {
         materialRepository.deleteAll();
         usuarioRepository.deleteAll();
 
-        usuarioService.criarUsuario(
+        TestUsuarioFactory.criarUsuario(
+                usuarioService,
                 "admin",
                 SENHA_ADMIN,
                 Role.ADMIN,
                 true
         );
-        usuarioService.criarUsuario(
+        TestUsuarioFactory.criarUsuario(
+                usuarioService,
                 "operador",
                 SENHA_OPERADOR,
                 Role.OPERADOR,
                 true
         );
-        usuarioService.criarUsuario(
-                "consulta",
-                SENHA_CONSULTA,
-                Role.CONSULTA,
+        TestUsuarioFactory.criarUsuario(
+                usuarioService,
+                "gerente",
+                SENHA_GERENTE,
+                Role.GERENTE,
                 true
         );
 
         adminToken = token("admin", SENHA_ADMIN);
         operadorToken = token("operador", SENHA_OPERADOR);
-        consultaToken = token("consulta", SENHA_CONSULTA);
+        gerenteToken = token("gerente", SENHA_GERENTE);
     }
 
     @ParameterizedTest
@@ -162,7 +165,7 @@ class NotaFiscalEntradaIntegrationTests {
         );
 
         mockMvc.perform(get("/notas-fiscais/{id}", id(resultado))
-                        .header(HttpHeaders.AUTHORIZATION, bearer(consultaToken)))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("RASCUNHO"))
                 .andExpect(jsonPath("$.cadastradaPorUsername").value("operador"))
@@ -218,7 +221,7 @@ class NotaFiscalEntradaIntegrationTests {
         );
 
         mockMvc.perform(get("/notas-fiscais")
-                        .header(HttpHeaders.AUTHORIZATION, bearer(consultaToken)))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].id").value(notaId))
@@ -545,7 +548,7 @@ class NotaFiscalEntradaIntegrationTests {
     }
 
     @Test
-    void consultaPodeVisualizarMasNaoPodeCriarEditarOuConfirmar()
+    void gerenteNaoPodeAcessarCriarEditarOuConfirmar()
             throws Exception {
         Material material = criarMaterial("Máscara", 0);
         Long notaId = id(criarNota(
@@ -555,17 +558,17 @@ class NotaFiscalEntradaIntegrationTests {
         ));
 
         mockMvc.perform(get("/notas-fiscais/{id}", notaId)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(consultaToken)))
-                .andExpect(status().isOk());
+                        .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken)))
+                .andExpect(status().isForbidden());
 
         mockMvc.perform(post("/notas-fiscais")
-                        .header(HttpHeaders.AUTHORIZATION, bearer(consultaToken))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(notaRequest(chave(17), List.of()))))
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(put("/notas-fiscais/{id}", notaId)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(consultaToken))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(notaRequest(
                                 chave(16),
@@ -574,7 +577,7 @@ class NotaFiscalEntradaIntegrationTests {
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(post("/notas-fiscais/{id}/confirmar", notaId)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(consultaToken)))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken)))
                 .andExpect(status().isForbidden());
     }
 

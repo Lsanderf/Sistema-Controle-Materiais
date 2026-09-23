@@ -1,7 +1,9 @@
 package com.Lucca.Projeto1.service;
 
+import com.Lucca.Projeto1.dto.usuario.CriarEncarregadoRequest;
+import com.Lucca.Projeto1.dto.usuario.CriarUsuarioRequest;
+import com.Lucca.Projeto1.dto.usuario.EncarregadoResumoResponse;
 import com.Lucca.Projeto1.dto.usuario.UsuarioAtualizacaoRequest;
-import com.Lucca.Projeto1.dto.usuario.UsuarioRequest;
 import com.Lucca.Projeto1.dto.usuario.UsuarioResponse;
 import com.Lucca.Projeto1.exception.RecursoNaoEncontradoException;
 import com.Lucca.Projeto1.exception.RegraNegocioException;
@@ -30,8 +32,11 @@ public class UsuarioService {
     }
 
     @Transactional
-    public UsuarioResponse cadastrar(UsuarioRequest request) {
+    public UsuarioResponse cadastrar(CriarUsuarioRequest request) {
         Usuario usuario = criarUsuario(
+                request.getNome(),
+                request.getCpf(),
+                request.getCelular(),
                 request.getUsername(),
                 request.getPassword(),
                 request.getRole(),
@@ -46,6 +51,31 @@ public class UsuarioService {
                 .stream()
                 .map(this::paraResponse)
                 .toList();
+    }
+
+    public List<EncarregadoResumoResponse> listarEncarregados() {
+        return usuarioRepository
+                .findByRoleOrderByNomeAsc(Role.ENCARREGADO)
+                .stream()
+                .map(this::paraEncarregadoResumoResponse)
+                .toList();
+    }
+
+    @Transactional
+    public EncarregadoResumoResponse cadastrarEncarregado(
+            CriarEncarregadoRequest request
+    ) {
+        Usuario usuario = criarUsuario(
+                request.getNome(),
+                request.getCpf(),
+                request.getCelular(),
+                request.getUsername(),
+                request.getPassword(),
+                Role.ENCARREGADO,
+                true
+        );
+
+        return paraEncarregadoResumoResponse(usuario);
     }
 
     public UsuarioResponse buscarPorId(Long id) {
@@ -136,12 +166,16 @@ public class UsuarioService {
 
     @Transactional
     public Usuario criarUsuario(
+            String nome,
+            String cpf,
+            String celular,
             String username,
             String password,
             Role role,
             boolean ativo
     ) {
         String usernameNormalizado = normalizarUsername(username);
+        String cpfNormalizado = normalizarCpf(cpf);
 
         if (usuarioRepository.existsByUsernameIgnoreCase(usernameNormalizado)) {
             throw new RegraNegocioException(
@@ -149,7 +183,16 @@ public class UsuarioService {
             );
         }
 
+        if (usuarioRepository.existsByCpf(cpfNormalizado)) {
+            throw new RegraNegocioException(
+                    "Já existe um usuário com esse CPF"
+            );
+        }
+
         Usuario usuario = new Usuario();
+        usuario.setNome(normalizarTexto(nome));
+        usuario.setCpf(cpfNormalizado);
+        usuario.setCelular(normalizarCelular(celular));
         usuario.setUsername(usernameNormalizado);
         usuario.setSenha(passwordEncoder.encode(password));
         usuario.setRole(role);
@@ -161,10 +204,24 @@ public class UsuarioService {
     public UsuarioResponse paraResponse(Usuario usuario) {
         return new UsuarioResponse(
                 usuario.getId(),
+                usuario.getNome(),
+                usuario.getCelular(),
                 usuario.getUsername(),
                 usuario.getRole(),
                 usuario.getAtivo(),
                 usuario.getDataInativacao()
+        );
+    }
+
+    private EncarregadoResumoResponse paraEncarregadoResumoResponse(
+            Usuario usuario
+    ) {
+        return new EncarregadoResumoResponse(
+                usuario.getId(),
+                usuario.getNome(),
+                usuario.getCelular(),
+                usuario.getUsername(),
+                usuario.getAtivo()
         );
     }
 
@@ -179,6 +236,18 @@ public class UsuarioService {
 
     private String normalizarUsername(String username) {
         return username == null ? null : username.trim();
+    }
+
+    private String normalizarCpf(String cpf) {
+        return cpf == null ? null : cpf.replaceAll("[^0-9]", "");
+    }
+
+    private String normalizarCelular(String celular) {
+        return celular == null ? null : celular.replaceAll("[^0-9]", "");
+    }
+
+    private String normalizarTexto(String texto) {
+        return texto == null ? null : texto.trim();
     }
 
     private void validarQueNaoEhUltimoAdminAtivo() {

@@ -52,7 +52,7 @@ class ComprovanteMovimentacaoIntegrationTests {
 
     private static final String SENHA_ADMIN = "senhaAdmin123";
     private static final String SENHA_OPERADOR = "senhaOperador123";
-    private static final String SENHA_CONSULTA = "senhaConsulta123";
+    private static final String SENHA_GERENTE = "senhaGerente123";
 
     @Autowired
     private MockMvc mockMvc;
@@ -89,7 +89,7 @@ class ComprovanteMovimentacaoIntegrationTests {
 
     private String adminToken;
     private String operadorToken;
-    private String consultaToken;
+    private String gerenteToken;
 
     @BeforeEach
     void prepararBanco() throws Exception {
@@ -102,23 +102,27 @@ class ComprovanteMovimentacaoIntegrationTests {
         materialRepository.deleteAll();
         usuarioRepository.deleteAll();
 
-        usuarioService.criarUsuario("admin", SENHA_ADMIN, Role.ADMIN, true);
-        usuarioService.criarUsuario(
+        TestUsuarioFactory.criarUsuario(
+                usuarioService, "admin", SENHA_ADMIN, Role.ADMIN, true
+        );
+        TestUsuarioFactory.criarUsuario(
+                usuarioService,
                 "operador",
                 SENHA_OPERADOR,
                 Role.OPERADOR,
                 true
         );
-        usuarioService.criarUsuario(
-                "consulta",
-                SENHA_CONSULTA,
-                Role.CONSULTA,
+        TestUsuarioFactory.criarUsuario(
+                usuarioService,
+                "gerente",
+                SENHA_GERENTE,
+                Role.GERENTE,
                 true
         );
 
         adminToken = token("admin", SENHA_ADMIN);
         operadorToken = token("operador", SENHA_OPERADOR);
-        consultaToken = token("consulta", SENHA_CONSULTA);
+        gerenteToken = token("gerente", SENHA_GERENTE);
     }
 
     @Test
@@ -132,7 +136,7 @@ class ComprovanteMovimentacaoIntegrationTests {
         ));
 
         mockMvc.perform(get("/movimentacoes/{id}/comprovante", movimentacaoId)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(consultaToken)))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(movimentacaoId))
                 .andExpect(jsonPath("$.tipo").value("RETIRADA"))
@@ -162,7 +166,7 @@ class ComprovanteMovimentacaoIntegrationTests {
     void consultarComprovanteDeMovimentacaoInexistenteRetornaNotFound()
             throws Exception {
         mockMvc.perform(get("/movimentacoes/{id}/comprovante", 999999)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(consultaToken)))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.erro").value(
                         "Movimentação com ID 999999 não encontrada"
@@ -208,7 +212,7 @@ class ComprovanteMovimentacaoIntegrationTests {
                 .get("movimentacoes").get(0).get("id").asLong();
 
         mockMvc.perform(get("/movimentacoes/{id}/comprovante", movimentacaoId)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(consultaToken)))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.tipo").value("ENTRADA"))
                 .andExpect(jsonPath("$.funcionario").isEmpty())
@@ -241,7 +245,7 @@ class ComprovanteMovimentacaoIntegrationTests {
         ));
 
         mockMvc.perform(get("/movimentacoes/{id}/comprovante", devolucaoId)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(consultaToken)))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.tipo").value("DEVOLUCAO"))
                 .andExpect(jsonPath("$.quantidade").value(4))
@@ -272,7 +276,7 @@ class ComprovanteMovimentacaoIntegrationTests {
         contratoRepository.saveAndFlush(contexto.contrato());
 
         mockMvc.perform(get("/movimentacoes/{id}/comprovante", movimentacaoId)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(consultaToken)))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.material.nome").value("Capacete"))
                 .andExpect(jsonPath("$.funcionario.nome").value("João Silva"))
@@ -351,13 +355,13 @@ class ComprovanteMovimentacaoIntegrationTests {
                                 movimentacaoId,
                                 evidenciaId
                         )
-                        .header(HttpHeaders.AUTHORIZATION, bearer(consultaToken)))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken)))
                 .andExpect(status().isOk())
                 .andExpect(content().bytes(png))
                 .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"));
 
         mockMvc.perform(get("/movimentacoes/{id}/comprovante", movimentacaoId)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(consultaToken)))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.evidencias.length()").value(1))
                 .andExpect(jsonPath("$.evidencias[0].id").value(evidenciaId))
@@ -382,7 +386,7 @@ class ComprovanteMovimentacaoIntegrationTests {
                                 .file(arquivo)
                                 .header(
                                         HttpHeaders.AUTHORIZATION,
-                                        bearer(consultaToken)
+                                        bearer(gerenteToken)
                                 )
                 )
                 .andExpect(status().isForbidden());

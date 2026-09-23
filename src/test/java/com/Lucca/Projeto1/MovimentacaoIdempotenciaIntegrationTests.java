@@ -83,7 +83,8 @@ class MovimentacaoIdempotenciaIntegrationTests {
         materialRepository.deleteAll();
         usuarioRepository.deleteAll();
 
-        usuarioService.criarUsuario(
+        TestUsuarioFactory.criarUsuario(
+                usuarioService,
                 "operador",
                 SENHA_OPERADOR,
                 Role.OPERADOR,

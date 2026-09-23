@@ -20,6 +20,15 @@ public class Usuario {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false, length = 150)
+    private String nome;
+
+    @Column(nullable = false, unique = true, length = 11)
+    private String cpf;
+
+    @Column(nullable = false, length = 20)
+    private String celular;
+
     @Column(nullable = false, length = 100)
     private String username;
 
@@ -40,7 +49,18 @@ public class Usuario {
     public Usuario() {
     }
 
-    public Usuario(String username, String senha, Role role, Boolean ativo) {
+    public Usuario(
+            String nome,
+            String cpf,
+            String celular,
+            String username,
+            String senha,
+            Role role,
+            Boolean ativo
+    ) {
+        this.nome = nome;
+        this.cpf = cpf;
+        this.celular = celular;
         this.username = username;
         this.senha = senha;
         this.role = role;
@@ -49,6 +69,30 @@ public class Usuario {
 
     public Long getId() {
         return id;
+    }
+
+    public String getNome() {
+        return nome;
+    }
+
+    public void setNome(String nome) {
+        this.nome = nome;
+    }
+
+    public String getCpf() {
+        return cpf;
+    }
+
+    public void setCpf(String cpf) {
+        this.cpf = cpf;
+    }
+
+    public String getCelular() {
+        return celular;
+    }
+
+    public void setCelular(String celular) {
+        this.celular = celular;
     }
 
     public String getUsername() {

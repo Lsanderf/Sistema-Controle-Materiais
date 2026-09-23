@@ -7,12 +7,14 @@ import org.junit.jupiter.api.Test;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MigrationCompatibilityTests {
@@ -338,6 +340,89 @@ class MigrationCompatibilityTests {
             assertEquals("operador-legado", rows.getString("usuario_username"));
             assertNotNull(rows.getTimestamp("data_finalizacao"));
             assertEquals(1, rows.getInt("versao"));
+        }
+    }
+
+    @Test
+    void migrationV11AdicionaDadosPessoaisERestringeRolesFinais()
+            throws Exception {
+        String databaseName = "migration_"
+                + UUID.randomUUID().toString().replace("-", "");
+        String url = "jdbc:h2:mem:" + databaseName
+                + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1";
+
+        try (
+                Connection connection = DriverManager.getConnection(url, "sa", "");
+                Statement statement = connection.createStatement()
+        ) {
+            statement.execute("""
+                    CREATE TABLE tb_usuarios (
+                        id BIGINT PRIMARY KEY,
+                        username VARCHAR(100) NOT NULL,
+                        senha VARCHAR(255) NOT NULL,
+                        role VARCHAR(20) NOT NULL,
+                        ativo BOOLEAN NOT NULL,
+                        data_inativacao TIMESTAMP,
+                        CONSTRAINT ck_usuarios_role
+                            CHECK (role IN ('ADMIN', 'OPERADOR', 'CONSULTA'))
+                    )
+                    """);
+            statement.execute("""
+                    INSERT INTO tb_usuarios
+                        (id, username, senha, role, ativo)
+                    VALUES
+                        (1, 'admin', 'hash-1', 'ADMIN', TRUE),
+                        (2, 'leitura-legada', 'hash-2', 'CONSULTA', TRUE)
+                    """);
+        }
+
+        MigrateResult result = Flyway.configure()
+                .dataSource(url, "sa", "")
+                .locations("classpath:db/migration")
+                .baselineOnMigrate(true)
+                .baselineVersion("10")
+                .target("11")
+                .load()
+                .migrate();
+
+        assertEquals(1, result.migrationsExecuted);
+
+        try (
+                Connection connection = DriverManager.getConnection(url, "sa", "");
+                Statement statement = connection.createStatement();
+                ResultSet rows = statement.executeQuery("""
+                        SELECT id, nome, cpf, celular, role
+                        FROM tb_usuarios
+                        ORDER BY id
+                        """)
+        ) {
+            assertTrue(rows.next());
+            assertEquals("admin", rows.getString("nome"));
+            assertEquals("00000000001", rows.getString("cpf"));
+            assertEquals("00000000000", rows.getString("celular"));
+            assertEquals("ADMIN", rows.getString("role"));
+
+            assertTrue(rows.next());
+            assertEquals("leitura-legada", rows.getString("nome"));
+            assertEquals("00000000002", rows.getString("cpf"));
+            assertEquals("GERENTE", rows.getString("role"));
+            assertTrue(!rows.next());
+
+            assertThrows(SQLException.class, () -> statement.execute("""
+                    INSERT INTO tb_usuarios
+                        (id, nome, cpf, celular, username, senha, role, ativo)
+                    VALUES
+                        (3, 'Inválido', '12345678909', '11999999999',
+                         'invalido', 'hash-3', 'OUTRA', TRUE)
+                    """));
+
+            assertThrows(SQLException.class, () -> statement.execute("""
+                    INSERT INTO tb_usuarios
+                        (id, nome, cpf, celular, username, senha, role, ativo)
+                    VALUES
+                        (4, 'CPF duplicado', '00000000001', '11999999999',
+                         'cpf-duplicado', 'hash-4', 'ENCARREGADO', TRUE)
+                    """));
         }
     }
 

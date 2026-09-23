@@ -135,7 +135,8 @@ assinatura posteriormente permanece disponível para ADMIN/OPERADOR nesses
 registros; não modifica estoque nem substitui assinatura existente. Nenhum
 histórico recebe assinatura automática ou alteração retroativa.
 
-CONSULTA continua apenas visualizando comprovantes e evidências. ENTRADA
+O módulo de movimentações, incluindo comprovantes e evidências, permanece
+restrito a ADMIN e OPERADOR. GERENTE não possui acesso geral ao módulo. ENTRADA
 continua apresentando a NF, sem exigir assinatura ou aceitar foto de devolução.
 
 ## Arquivos desta tarefa
@@ -206,7 +207,7 @@ cenários em dois tamanhos de tela) e 26 execuções existentes de cadastro de
 material pela NF. Cobrem resumo, bloqueio sem assinatura, cancelamento,
 confirmação, foto opcional, galeria/câmera, prévia, remoção, erro preservando
 estado, falha de captura, prevenção de reenvio, limpeza no sucesso, comprovantes,
-CONSULTA e evidência NF de ENTRADA. A emulação não abre câmera ou teclado de um
+GERENTE e evidência NF de ENTRADA. A emulação não abre câmera ou teclado de um
 celular físico.
 
 Para repetir:
@@ -253,9 +254,8 @@ retirada para testar a devolução.
 9. Repita cancelamento após assinar e escolher foto, antes de confirmar. Nenhuma
    operação deve existir no histórico. Confira rolagem vertical, orientação da
    tela e acesso aos botões enquanto navega pelo resumo, assinatura e foto.
-10. Entre como CONSULTA: não deve haver controles de criação/assinatura. Abra
-    comprovante novo, histórico sem assinatura e ENTRADA. O histórico deve
-    continuar legível, e ENTRADA deve mostrar a NF.
+10. Entre como GERENTE e confirme que as consultas de movimentações,
+    comprovantes e evidências são negadas pelo backend com HTTP 403.
 11. Com ADMIN, confirme também o fluxo completo. Verifique que o cadastro normal
     de NF e sua confirmação continuam funcionando sem assinatura.
 

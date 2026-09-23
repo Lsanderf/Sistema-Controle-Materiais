@@ -105,13 +105,15 @@ class MovimentacaoRollbackIntegrationTests {
         materialRepository.deleteAll();
         usuarioRepository.deleteAll();
 
-        usuarioService.criarUsuario(
+        TestUsuarioFactory.criarUsuario(
+                usuarioService,
                 "operador",
                 SENHA_OPERADOR,
                 Role.OPERADOR,
                 true
         );
-        usuarioService.criarUsuario(
+        TestUsuarioFactory.criarUsuario(
+                usuarioService,
                 "admin-estorno",
                 SENHA_OPERADOR,
                 Role.ADMIN,

@@ -60,7 +60,7 @@ class MovimentacaoComEvidenciasIntegrationTests {
     private Funcionario funcionario;
     private Contrato contrato;
     private String operador;
-    private String consulta;
+    private String gerente;
     private String admin;
 
     @BeforeEach
@@ -73,11 +73,17 @@ class MovimentacaoComEvidenciasIntegrationTests {
         contratos.deleteAll();
         materiais.deleteAll();
         usuarioRepository.deleteAll();
-        usuarios.criarUsuario("operador", "senhaTeste123", Role.OPERADOR, true);
-        usuarios.criarUsuario("consulta", "senhaTeste123", Role.CONSULTA, true);
-        usuarios.criarUsuario("admin", "senhaTeste123", Role.ADMIN, true);
+        TestUsuarioFactory.criarUsuario(
+                usuarios, "operador", "senhaTeste123", Role.OPERADOR, true
+        );
+        TestUsuarioFactory.criarUsuario(
+                usuarios, "gerente", "senhaTeste123", Role.GERENTE, true
+        );
+        TestUsuarioFactory.criarUsuario(
+                usuarios, "admin", "senhaTeste123", Role.ADMIN, true
+        );
         operador = token("operador");
-        consulta = token("consulta");
+        gerente = token("gerente");
         admin = token("admin");
         funcionario = funcionarios.save(new Funcionario("João", "12345678909", "Técnico"));
         contrato = contratos.save(new Contrato("Contrato A", "Obra", true));
@@ -93,7 +99,7 @@ class MovimentacaoComEvidenciasIntegrationTests {
                 .andExpect(status().isCreated()).andReturn();
         long id = json(result).get("id").asLong();
         assertEquals(tipo.equals("RETIRADA") ? 7 : 13, estoque());
-        mvc.perform(get("/movimentacoes/{id}/comprovante", id).header(HttpHeaders.AUTHORIZATION, consulta))
+        mvc.perform(get("/movimentacoes/{id}/comprovante", id).header(HttpHeaders.AUTHORIZATION, operador))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.dataFinalizacao").isNotEmpty())
                 .andExpect(jsonPath("$.evidencias.length()").value(1))
@@ -126,14 +132,14 @@ class MovimentacaoComEvidenciasIntegrationTests {
         long id = json(result).get("id").asLong();
         assertEquals(13, estoque());
         MvcResult receipt = mvc.perform(get("/movimentacoes/{id}/comprovante", id)
-                        .header(HttpHeaders.AUTHORIZATION, consulta))
+                        .header(HttpHeaders.AUTHORIZATION, operador))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.evidencias.length()").value(2))
                 .andExpect(jsonPath("$.evidencias[1].tipo").value("FOTO_DEVOLUCAO"))
                 .andExpect(jsonPath("$.evidencias[1].nomeArquivo").value("material.jpg"))
                 .andExpect(jsonPath("$.evidencias[1].storageKey").doesNotExist()).andReturn();
         String url = json(receipt).get("evidencias").get(1).get("urlArquivo").asText();
-        mvc.perform(get(url).header(HttpHeaders.AUTHORIZATION, consulta))
+        mvc.perform(get(url).header(HttpHeaders.AUTHORIZATION, operador))
                 .andExpect(status().isOk()).andExpect(content().bytes(jpeg));
         var foto = evidencias.findByMovimentacaoIdOrderByDataEvidenciaAsc(id).get(1);
         assertFalse(foto.getStorageKey().contains("material.jpg"));
@@ -201,10 +207,10 @@ class MovimentacaoComEvidenciasIntegrationTests {
     }
 
     @Test
-    void consultaNaoPodeCriarMesmoEnviandoTodasAsEvidencias() throws Exception {
+    void gerenteNaoPodeCriarMesmoEnviandoTodasAsEvidencias() throws Exception {
         Estado antes = estado();
         mvc.perform(requisicao("DEVOLUCAO").file(assinatura()).file(foto())
-                        .header(HttpHeaders.AUTHORIZATION, consulta))
+                        .header(HttpHeaders.AUTHORIZATION, gerente))
                 .andExpect(status().isForbidden());
         assertEquals(antes, estado());
     }
@@ -213,7 +219,7 @@ class MovimentacaoComEvidenciasIntegrationTests {
     void historicoSemAssinaturaContinuaConsultavelSemInventarEvidencias() throws Exception {
         long id = historica();
         Estado antes = estado();
-        mvc.perform(get("/movimentacoes/{id}/comprovante", id).header(HttpHeaders.AUTHORIZATION, consulta))
+        mvc.perform(get("/movimentacoes/{id}/comprovante", id).header(HttpHeaders.AUTHORIZATION, operador))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.evidencias").isEmpty());
         assertEquals(antes, estado());
     }

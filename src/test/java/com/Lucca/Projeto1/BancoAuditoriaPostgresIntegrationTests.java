@@ -654,7 +654,12 @@ class BancoAuditoriaPostgresIntegrationTests {
 
     private Usuario criarUsuarioDeAuditoria() {
         return usuarioRepository.save(
-                new Usuario("auditoria-" + UUID.randomUUID(), "senha-de-teste", Role.OPERADOR, true)
+                TestUsuarioFactory.usuarioPersistivel(
+                        "auditoria-" + UUID.randomUUID(),
+                        "senha-de-teste",
+                        Role.OPERADOR,
+                        true
+                )
         );
     }
 

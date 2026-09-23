@@ -66,7 +66,13 @@ class MovimentacaoInativosIntegrationTests {
     @BeforeEach
     void preparar() throws Exception {
         limparBanco();
-        usuarioService.criarUsuario("operador-rn01", SENHA, Role.OPERADOR, true);
+        TestUsuarioFactory.criarUsuario(
+                usuarioService,
+                "operador-rn01",
+                SENHA,
+                Role.OPERADOR,
+                true
+        );
         operadorToken = token("operador-rn01");
         funcionario = funcionarioRepository.save(
                 new Funcionario("Funcionário RN-01", "52998224725", "Técnico")

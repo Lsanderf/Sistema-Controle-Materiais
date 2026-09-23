@@ -71,20 +71,26 @@ class EstornoMovimentacaoIntegrationTests {
 
     private String adminToken;
     private String operadorToken;
-    private String consultaToken;
+    private String gerenteToken;
     private Usuario admin;
 
     @BeforeEach
     void prepararBanco() throws Exception {
         limparBanco();
 
-        usuarioService.criarUsuario("admin", SENHA, Role.ADMIN, true);
-        usuarioService.criarUsuario("operador", SENHA, Role.OPERADOR, true);
-        usuarioService.criarUsuario("consulta", SENHA, Role.CONSULTA, true);
+        TestUsuarioFactory.criarUsuario(
+                usuarioService, "admin", SENHA, Role.ADMIN, true
+        );
+        TestUsuarioFactory.criarUsuario(
+                usuarioService, "operador", SENHA, Role.OPERADOR, true
+        );
+        TestUsuarioFactory.criarUsuario(
+                usuarioService, "gerente", SENHA, Role.GERENTE, true
+        );
         admin = usuarioRepository.findByUsernameIgnoreCase("admin").orElseThrow();
         adminToken = token("admin");
         operadorToken = token("operador");
-        consultaToken = token("consulta");
+        gerenteToken = token("gerente");
     }
 
     @AfterEach
@@ -258,7 +264,7 @@ class EstornoMovimentacaoIntegrationTests {
                 .andExpect(status().isUnauthorized());
         estornar(operadorToken, origem.getId(), "Correção", "estorno-operador")
                 .andExpect(status().isForbidden());
-        estornar(consultaToken, origem.getId(), "Correção", "estorno-consulta")
+        estornar(gerenteToken, origem.getId(), "Correção", "estorno-gerente")
                 .andExpect(status().isForbidden());
         estornar(adminToken, origem.getId(), "Correção", "estorno-admin")
                 .andExpect(status().isCreated());

@@ -1,7 +1,6 @@
 package com.Lucca.Projeto1.mapper;
 
 import com.Lucca.Projeto1.dto.contrato.ContratoResponse;
-import com.Lucca.Projeto1.dto.funcionario.FuncionarioResponse;
 import com.Lucca.Projeto1.dto.material.MaterialResponse;
 import com.Lucca.Projeto1.dto.movimentacao.MovimentacaoResponse;
 import com.Lucca.Projeto1.model.Movimentacao;

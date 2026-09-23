@@ -78,13 +78,15 @@ class DataInativacaoIntegrationTests {
         materialRepository.deleteAll();
         usuarioRepository.deleteAll();
 
-        usuarioService.criarUsuario(
+        TestUsuarioFactory.criarUsuario(
+                usuarioService,
                 "admin",
                 SENHA_ADMIN,
                 Role.ADMIN,
                 true
         );
-        usuarioService.criarUsuario(
+        TestUsuarioFactory.criarUsuario(
+                usuarioService,
                 "operador",
                 "senhaOperador123",
                 Role.OPERADOR,
@@ -99,11 +101,9 @@ class DataInativacaoIntegrationTests {
         Usuario usuario = usuarioRepository
                 .findByUsernameIgnoreCase("operador")
                 .orElseThrow();
-        Funcionario funcionario = criarFuncionario();
         Contrato contrato = criarContrato();
 
         validarDataNulaNoResponse("/usuarios/{id}", usuario.getId());
-        validarDataNulaNoResponse("/funcionarios/{id}", funcionario.getId());
         validarDataNulaNoResponse("/contratos/{id}", contrato.getId());
     }
 
@@ -156,49 +156,6 @@ class DataInativacaoIntegrationTests {
         LocalDateTime novaData = buscarUsuario(usuario.getId()).getDataInativacao();
         assertNotNull(novaData);
         assertTrue(novaData.isAfter(dataOriginal));
-    }
-
-    @Test
-    void funcionarioRegistraPreservaELimpaDataSemAfetarEdicao()
-            throws Exception {
-        Funcionario funcionario = criarFuncionario();
-        LocalDateTime antes = LocalDateTime.now();
-
-        mockMvc.perform(patch("/funcionarios/{id}/desativar", funcionario.getId())
-                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
-                .andExpect(status().isOk());
-
-        LocalDateTime depois = LocalDateTime.now();
-        LocalDateTime dataOriginal = buscarFuncionario(funcionario.getId())
-                .getDataInativacao();
-        assertTimestampEntre(dataOriginal, antes, depois);
-
-        mockMvc.perform(patch("/funcionarios/{id}/desativar", funcionario.getId())
-                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
-                .andExpect(status().isOk());
-        assertEquals(
-                dataOriginal,
-                buscarFuncionario(funcionario.getId()).getDataInativacao()
-        );
-
-        mockMvc.perform(put("/funcionarios/{id}", funcionario.getId())
-                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of(
-                                "nome", "Maria Atualizada",
-                                "cpf", "12345678909",
-                                "cargo", "Engenheira"
-                        ))))
-                .andExpect(status().isOk());
-        assertEquals(
-                dataOriginal,
-                buscarFuncionario(funcionario.getId()).getDataInativacao()
-        );
-
-        mockMvc.perform(patch("/funcionarios/{id}/ativar", funcionario.getId())
-                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
-                .andExpect(status().isOk());
-        assertNull(buscarFuncionario(funcionario.getId()).getDataInativacao());
     }
 
     @Test
@@ -311,10 +268,6 @@ class DataInativacaoIntegrationTests {
 
     private Usuario buscarUsuario(Long id) {
         return usuarioRepository.findById(id).orElseThrow();
-    }
-
-    private Funcionario buscarFuncionario(Long id) {
-        return funcionarioRepository.findById(id).orElseThrow();
     }
 
     private Contrato buscarContrato(Long id) {

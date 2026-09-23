@@ -1,7 +1,9 @@
 package com.Lucca.Projeto1.controller;
 
+import com.Lucca.Projeto1.dto.usuario.CriarEncarregadoRequest;
+import com.Lucca.Projeto1.dto.usuario.CriarUsuarioRequest;
+import com.Lucca.Projeto1.dto.usuario.EncarregadoResumoResponse;
 import com.Lucca.Projeto1.dto.usuario.UsuarioAtualizacaoRequest;
-import com.Lucca.Projeto1.dto.usuario.UsuarioRequest;
 import com.Lucca.Projeto1.dto.usuario.UsuarioResponse;
 import com.Lucca.Projeto1.service.UsuarioService;
 import jakarta.validation.Valid;
@@ -41,9 +43,23 @@ public class UsuarioController {
         return ResponseEntity.ok(usuarioService.buscarPorId(id));
     }
 
+    @GetMapping("/encarregados")
+    public ResponseEntity<List<EncarregadoResumoResponse>> listarEncarregados() {
+        return ResponseEntity.ok(usuarioService.listarEncarregados());
+    }
+
+    @PostMapping("/encarregados")
+    public ResponseEntity<EncarregadoResumoResponse> cadastrarEncarregado(
+            @Valid @RequestBody CriarEncarregadoRequest request
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(usuarioService.cadastrarEncarregado(request));
+    }
+
     @PostMapping
     public ResponseEntity<UsuarioResponse> cadastrar(
-            @Valid @RequestBody UsuarioRequest request
+            @Valid @RequestBody CriarUsuarioRequest request
     ) {
         UsuarioResponse usuario = usuarioService.cadastrar(request);
 

@@ -13,6 +13,9 @@ Consulte `.env.example` para um modelo sem credenciais reais.
 - `JWT_EXPIRATION_SECONDS`, por exemplo `3600`
 - `APP_ADMIN_USERNAME`
 - `APP_ADMIN_PASSWORD`
+- `APP_ADMIN_NOME`, opcional; padrão `Administrador`
+- `APP_ADMIN_CPF`, opcional; padrão apenas para inicialização local
+- `APP_ADMIN_CELULAR`, opcional; padrão apenas para inicialização local
 - `APP_CORS_ALLOWED_ORIGINS`, lista separada por vírgula, sem usar `*`
 - `APP_EVIDENCIAS_STORAGE`, opcional; nesta versão deve permanecer `local`
 - `APP_EVIDENCIAS_DIRETORIO`, opcional; padrão `./data/evidencias`
@@ -69,6 +72,9 @@ O cadastro recebe:
 
 ```json
 {
+  "nome": "Operador de Estoque",
+  "cpf": "123.456.789-09",
+  "celular": "(11) 99999-0000",
   "username": "operador1",
   "password": "umaSenhaSegura",
   "role": "OPERADOR"
@@ -85,21 +91,38 @@ A edição recebe username, role e, opcionalmente, `novaSenha`:
 }
 ```
 
-Sem `novaSenha`, a senha atual é mantida. As respostas expõem apenas `id`,
-`username`, `role` e `ativo`; senha e hash nunca são serializados.
+Sem `novaSenha`, a senha atual é mantida. As respostas administrativas expõem
+`id`, `nome`, `celular`, `username`, `role`, `ativo` e `dataInativacao`. CPF,
+senha e hash nunca são serializados.
 
-Papéis disponíveis: `ADMIN`, `OPERADOR`, `CONSULTA`.
+Cadastro e listagem operacional de encarregados:
+
+```http
+POST /usuarios/encarregados  # ADMIN ou GERENTE
+GET /usuarios/encarregados   # ADMIN, OPERADOR ou GERENTE
+Authorization: Bearer jwt
+```
+
+O cadastro recebe `nome`, `cpf`, `celular`, `username` e `password`. A role é
+sempre definida pelo backend como `ENCARREGADO`. A resposta usa um DTO próprio
+com `id`, `nome`, `celular`, `username` e `ativo`, sem CPF ou senha.
+
+Papéis disponíveis: `ADMIN`, `OPERADOR`, `GERENTE`, `ENCARREGADO`.
 
 ## Autorização
 
 - `/auth/login` e `OPTIONS /**`: público.
-- `GET /materiais/**`, `GET /funcionarios/**`, `GET /contratos/**` e `GET /movimentacoes/**`: `ADMIN`, `OPERADOR` e `CONSULTA`.
+- `GET /materiais/**`, `GET /movimentacoes/**` e `GET /notas-fiscais/**`: `ADMIN` e `OPERADOR`.
+- `GET /contratos/**`: `ADMIN`, `OPERADOR` e `GERENTE`.
+- Criação, edição, ativação, desativação e exclusão de contratos: `ADMIN` e `GERENTE`.
 - `POST /movimentacoes`: `ADMIN` e `OPERADOR`.
 - `POST /movimentacoes/{id}/assinatura`: `ADMIN` e `OPERADOR`.
-- `GET /movimentacoes/{id}/comprovante` e leitura de evidências: `ADMIN`, `OPERADOR` e `CONSULTA`.
+- `GET /movimentacoes/{id}/comprovante` e leitura de evidências: `ADMIN` e `OPERADOR`.
 - `POST /notas-fiscais` e `POST /notas-fiscais/{id}/confirmar`: `ADMIN` e `OPERADOR`.
-- Alterações em materiais, funcionários e contratos: `ADMIN`.
-- `/usuarios/**`: `ADMIN`.
+- Alterações em materiais: `ADMIN`, exceto o cadastro já permitido a `OPERADOR`.
+- `GERENTE` não possui acesso geral a materiais, movimentações ou notas fiscais.
+- `ENCARREGADO` não possui acesso geral aos módulos administrativos ou operacionais acima.
+- Administração geral em `/usuarios/**`: `ADMIN`, exceto os endpoints específicos de encarregados descritos acima.
 - Endpoints não configurados exigem autenticação.
 
 O status e a role atuais do usuário são consultados no banco durante cada
