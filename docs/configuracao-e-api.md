@@ -98,7 +98,7 @@ senha e hash nunca são serializados.
 Cadastro e listagem operacional de encarregados:
 
 ```http
-POST /usuarios/encarregados  # ADMIN ou GERENTE
+POST /usuarios/encarregados  # ADMIN
 GET /usuarios/encarregados   # ADMIN, OPERADOR ou GERENTE
 Authorization: Bearer jwt
 ```
@@ -112,16 +112,21 @@ Papéis disponíveis: `ADMIN`, `OPERADOR`, `GERENTE`, `ENCARREGADO`.
 ## Autorização
 
 - `/auth/login` e `OPTIONS /**`: público.
-- `GET /materiais/**`, `GET /movimentacoes/**` e `GET /notas-fiscais/**`: `ADMIN` e `OPERADOR`.
+- `GET /materiais/**`: `ADMIN`, `OPERADOR` e `GERENTE`; a consulta pelo GERENTE serve para preencher requisições.
+- `GET /movimentacoes/**`: `ADMIN` e `OPERADOR`.
+- `GET /notas-fiscais/**`: `ADMIN` e `OPERADOR`.
 - `GET /contratos/**`: `ADMIN`, `OPERADOR` e `GERENTE`.
-- Criação, edição, ativação, desativação e exclusão de contratos: `ADMIN` e `GERENTE`.
+- Criação, edição, ativação, desativação e exclusão de contratos: `ADMIN`.
 - `POST /movimentacoes`: `ADMIN` e `OPERADOR`.
 - `POST /movimentacoes/{id}/assinatura`: `ADMIN` e `OPERADOR`.
 - `GET /movimentacoes/{id}/comprovante` e leitura de evidências: `ADMIN` e `OPERADOR`.
 - `POST /notas-fiscais` e `POST /notas-fiscais/{id}/confirmar`: `ADMIN` e `OPERADOR`.
 - Alterações em materiais: `ADMIN`, exceto o cadastro já permitido a `OPERADOR`.
-- `GERENTE` não possui acesso geral a materiais, movimentações ou notas fiscais.
-- `ENCARREGADO` não possui acesso geral aos módulos administrativos ou operacionais acima.
+- `POST /requisicoes`: `GERENTE`; o solicitante vem do JWT.
+- `GET /requisicoes` e `GET /requisicoes/{id}`: `ADMIN`, `GERENTE` e `ENCARREGADO`, filtrados e validados pelo usuário autenticado.
+- `PATCH /requisicoes/{id}/visualizar` e `/concluir`: somente o `ENCARREGADO` destinatário; `/cancelar`: somente o `GERENTE` solicitante.
+- `GERENTE` consulta materiais, contratos e encarregados para criar requisições, mas não acessa movimentações nem altera estoque.
+- `ENCARREGADO` acessa apenas as requisições destinadas a ele, sem acesso geral aos módulos administrativos ou operacionais acima.
 - Administração geral em `/usuarios/**`: `ADMIN`, exceto os endpoints específicos de encarregados descritos acima.
 - Endpoints não configurados exigem autenticação.
 

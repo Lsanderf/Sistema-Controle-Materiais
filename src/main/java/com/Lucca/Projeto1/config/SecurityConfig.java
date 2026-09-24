@@ -27,9 +27,6 @@ import org.springframework.security.oauth2.server.resource.web.authentication.Be
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;import org.springframework.context.annotation.Bean;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 
@@ -120,13 +117,21 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/usuarios/encarregados")
                         .hasAnyRole("ADMIN", "OPERADOR", "GERENTE")
                         .requestMatchers(HttpMethod.POST, "/usuarios/encarregados")
-                        .hasAnyRole("ADMIN", "GERENTE")
+                        .hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/materiais", "/materiais/**")
-                        .hasAnyRole("ADMIN", "OPERADOR")
+                        .hasAnyRole("ADMIN", "OPERADOR", "GERENTE")
                         .requestMatchers(HttpMethod.GET, "/contratos", "/contratos/**")
                         .hasAnyRole("ADMIN", "OPERADOR", "GERENTE")
                         .requestMatchers(HttpMethod.GET, "/movimentacoes", "/movimentacoes/**")
                         .hasAnyRole("ADMIN", "OPERADOR")
+                        .requestMatchers(HttpMethod.POST, "/requisicoes")
+                        .hasRole("GERENTE")
+                        .requestMatchers(HttpMethod.GET, "/requisicoes", "/requisicoes/**")
+                        .hasAnyRole("ADMIN", "GERENTE", "ENCARREGADO")
+                        .requestMatchers(HttpMethod.PATCH, "/requisicoes/*/visualizar", "/requisicoes/*/concluir")
+                        .hasRole("ENCARREGADO")
+                        .requestMatchers(HttpMethod.PATCH, "/requisicoes/*/cancelar")
+                        .hasRole("GERENTE")
                         .requestMatchers(HttpMethod.GET, "/notas-fiscais", "/notas-fiscais/**")
                         .hasAnyRole("ADMIN", "OPERADOR")
                         .requestMatchers(
@@ -158,9 +163,11 @@ public class SecurityConfig {
                         .requestMatchers("/materiais", "/materiais/**")
                         .hasRole("ADMIN")
                         .requestMatchers("/contratos", "/contratos/**")
-                        .hasAnyRole("ADMIN", "GERENTE")
+                        .hasRole("ADMIN")
                         .requestMatchers("/movimentacoes", "/movimentacoes/**")
                         .hasAnyRole("ADMIN", "OPERADOR")
+                        .requestMatchers("/requisicoes", "/requisicoes/**")
+                        .hasAnyRole("ADMIN", "GERENTE", "ENCARREGADO")
                         .requestMatchers("/notas-fiscais", "/notas-fiscais/**")
                         .hasAnyRole("ADMIN", "OPERADOR")
                         .requestMatchers("/usuarios", "/usuarios/**")

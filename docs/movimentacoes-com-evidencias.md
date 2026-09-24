@@ -28,8 +28,8 @@ rolagem interna e ações fora da área que rola.
 
 ## API e prevenção de bypass
 
-O caminho continua sendo **POST /movimentacoes**, com autenticação atual de
-ADMIN ou OPERADOR e resposta `MovimentacaoResponse` atual.
+O caminho continua sendo **POST /movimentacoes**, com autenticação de ADMIN ou
+OPERADOR e resposta `MovimentacaoResponse` atual.
 
 O novo envio usa `multipart/form-data`:
 
@@ -136,8 +136,10 @@ registros; não modifica estoque nem substitui assinatura existente. Nenhum
 histórico recebe assinatura automática ou alteração retroativa.
 
 O módulo de movimentações, incluindo comprovantes e evidências, permanece
-restrito a ADMIN e OPERADOR. GERENTE não possui acesso geral ao módulo. ENTRADA
-continua apresentando a NF, sem exigir assinatura ou aceitar foto de devolução.
+restrito a ADMIN e OPERADOR. GERENTE não possui acesso geral ao módulo.
+Solicitações do GERENTE são registradas no módulo separado de requisições e
+nunca criam movimentação nem alteram estoque. ENTRADA continua apresentando a
+NF, sem exigir assinatura ou aceitar foto de devolução.
 
 ## Arquivos desta tarefa
 

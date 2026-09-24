@@ -20,6 +20,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -165,6 +166,13 @@ public class GlobalExceptionHandler {
             CredenciaisInvalidasException exception
     ) {
         return responder(HttpStatus.UNAUTHORIZED, exception.getMessage());
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> tratarAcessoNegado(
+            AccessDeniedException exception
+    ) {
+        return responder(HttpStatus.FORBIDDEN, "Usuário autenticado sem permissão");
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

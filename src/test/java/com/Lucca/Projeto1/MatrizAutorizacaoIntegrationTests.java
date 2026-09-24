@@ -1,7 +1,14 @@
 package com.Lucca.Projeto1;
 
+import com.Lucca.Projeto1.model.Funcionario;
+import com.Lucca.Projeto1.model.Material;
 import com.Lucca.Projeto1.model.Role;
 import com.Lucca.Projeto1.repository.ContratoRepository;
+import com.Lucca.Projeto1.repository.ComprovanteMovimentacaoRepository;
+import com.Lucca.Projeto1.repository.EvidenciaMovimentacaoRepository;
+import com.Lucca.Projeto1.repository.FuncionarioRepository;
+import com.Lucca.Projeto1.repository.MaterialRepository;
+import com.Lucca.Projeto1.repository.MovimentacaoRepository;
 import com.Lucca.Projeto1.repository.UsuarioRepository;
 import com.Lucca.Projeto1.service.UsuarioService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -19,12 +26,13 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static com.Lucca.Projeto1.ImagemEvidenciaTestSupport.movimentacaoAssinada;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -50,6 +58,21 @@ class MatrizAutorizacaoIntegrationTests {
     @Autowired
     private ContratoRepository contratoRepository;
 
+    @Autowired
+    private FuncionarioRepository funcionarioRepository;
+
+    @Autowired
+    private MaterialRepository materialRepository;
+
+    @Autowired
+    private MovimentacaoRepository movimentacaoRepository;
+
+    @Autowired
+    private ComprovanteMovimentacaoRepository comprovanteRepository;
+
+    @Autowired
+    private EvidenciaMovimentacaoRepository evidenciaRepository;
+
     private String adminToken;
     private String operadorToken;
     private String gerenteToken;
@@ -57,7 +80,12 @@ class MatrizAutorizacaoIntegrationTests {
 
     @BeforeEach
     void prepararUsuarios() throws Exception {
+        evidenciaRepository.deleteAll();
+        comprovanteRepository.deleteAll();
+        movimentacaoRepository.deleteAll();
+        funcionarioRepository.deleteAll();
         contratoRepository.deleteAll();
+        materialRepository.deleteAll();
         usuarioRepository.deleteAll();
 
         TestUsuarioFactory.criarUsuario(
@@ -80,7 +108,24 @@ class MatrizAutorizacaoIntegrationTests {
     }
 
     @Test
-    void gerenteAdministraEncarregadosEContratosMasNaoOperaEstoque()
+    void gerenteConsultaDadosParaRequisitarMasNaoOperaEstoque()
+            throws Exception {
+        mockMvc.perform(get("/materiais")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/contratos")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken)))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/movimentacoes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of()))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken)))
+                .andExpect(status().isForbidden());
+        assertGetForbidden(gerenteToken, "/movimentacoes");
+    }
+
+    @Test
+    void gerenteConsultaEncarregadosEContratosSemGerenciarCadastros()
             throws Exception {
         mockMvc.perform(get("/usuarios/encarregados")
                         .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken)))
@@ -96,16 +141,16 @@ class MatrizAutorizacaoIntegrationTests {
                                 "username", "encarregado-do-gerente",
                                 "password", SENHA
                         ))))
-                .andExpect(status().isCreated());
+                .andExpect(status().isForbidden());
 
         mockMvc.perform(get("/contratos")
                         .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken)))
                 .andExpect(status().isOk());
 
         long contratoId = criarContrato(
-                gerenteToken,
-                "Contrato do gerente",
-                "Criado pelo gerente"
+                adminToken,
+                "Contrato administrativo",
+                "Criado pelo administrador"
         );
 
         mockMvc.perform(get("/contratos/{id}", contratoId)
@@ -120,29 +165,36 @@ class MatrizAutorizacaoIntegrationTests {
                                 "Descrição editada",
                                 true
                         )))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.nome")
-                        .value("Contrato editado pelo gerente"));
+                .andExpect(status().isForbidden());
 
         mockMvc.perform(patch("/contratos/{id}/desativar", contratoId)
                         .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.ativo").value(false));
+                .andExpect(status().isForbidden());
 
         mockMvc.perform(patch("/contratos/{id}/ativar", contratoId)
                         .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.ativo").value(true));
+                .andExpect(status().isForbidden());
 
-        assertGetForbidden(gerenteToken, "/materiais");
+        mockMvc.perform(get("/materiais")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken)))
+                .andExpect(status().isOk());
         assertGetForbidden(gerenteToken, "/movimentacoes");
         assertGetForbidden(gerenteToken, "/notas-fiscais");
 
+        mockMvc.perform(post("/materiais")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "nome", "Material não autorizado",
+                                "descricao", "O gerente só consulta materiais para requisitar"
+                        ))))
+                .andExpect(status().isForbidden());
+
         mockMvc.perform(delete("/contratos/{id}", contratoId)
                         .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken)))
-                .andExpect(status().isOk());
+                .andExpect(status().isForbidden());
 
-        assertFalse(contratoRepository.existsById(contratoId));
+        assertTrue(contratoRepository.existsById(contratoId));
     }
 
     @Test

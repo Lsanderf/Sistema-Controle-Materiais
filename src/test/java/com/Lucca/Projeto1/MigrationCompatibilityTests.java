@@ -20,6 +20,46 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class MigrationCompatibilityTests {
 
     @Test
+    void migrationV12CriaRequisicoesEItensComRelacionamentos() throws Exception {
+        String databaseName = "migration_"
+                + UUID.randomUUID().toString().replace("-", "");
+        String url = "jdbc:h2:mem:" + databaseName
+                + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1";
+
+        try (
+                Connection connection = DriverManager.getConnection(url, "sa", "");
+                Statement statement = connection.createStatement()
+        ) {
+            statement.execute("CREATE TABLE tb_usuarios (id BIGINT PRIMARY KEY)");
+            statement.execute("CREATE TABLE tb_contratos (id BIGINT PRIMARY KEY)");
+            statement.execute("CREATE TABLE tb_materiais (id BIGINT PRIMARY KEY)");
+        }
+
+        MigrateResult result = Flyway.configure()
+                .dataSource(url, "sa", "")
+                .locations("classpath:db/migration")
+                .baselineOnMigrate(true)
+                .baselineVersion("11")
+                .target("12")
+                .load()
+                .migrate();
+
+        assertEquals(1, result.migrationsExecuted);
+        try (
+                Connection connection = DriverManager.getConnection(url, "sa", "");
+                Statement statement = connection.createStatement();
+                ResultSet rows = statement.executeQuery("""
+                        SELECT COUNT(*)
+                        FROM INFORMATION_SCHEMA.TABLES
+                        WHERE TABLE_NAME IN ('TB_REQUISICOES', 'TB_REQUISICAO_ITENS')
+                        """)
+        ) {
+            assertTrue(rows.next());
+            assertEquals(2, rows.getInt(1));
+        }
+    }
+
+    @Test
     void migrationV3PreservaMovimentacoesAntigasSemUsuario() throws Exception {
         String databaseName = "migration_"
                 + UUID.randomUUID().toString().replace("-", "");
