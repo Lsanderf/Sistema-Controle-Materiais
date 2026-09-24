@@ -2,6 +2,7 @@ package com.Lucca.Projeto1.controller;
 
 import com.Lucca.Projeto1.dto.usuario.CriarEncarregadoRequest;
 import com.Lucca.Projeto1.dto.usuario.CriarUsuarioRequest;
+import com.Lucca.Projeto1.dto.usuario.AtualizarEncarregadoRequest;
 import com.Lucca.Projeto1.dto.usuario.EncarregadoResumoResponse;
 import com.Lucca.Projeto1.dto.usuario.UsuarioAtualizacaoRequest;
 import com.Lucca.Projeto1.dto.usuario.UsuarioResponse;
@@ -55,6 +56,38 @@ public class UsuarioController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(usuarioService.cadastrarEncarregado(request));
+    }
+
+    @GetMapping("/encarregados/{id}")
+    public ResponseEntity<EncarregadoResumoResponse> buscarEncarregado(
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(usuarioService.buscarEncarregado(id));
+    }
+
+    @PutMapping("/encarregados/{id}")
+    public ResponseEntity<EncarregadoResumoResponse> atualizarEncarregado(
+            @PathVariable Long id,
+            @Valid @RequestBody AtualizarEncarregadoRequest request
+    ) {
+        return ResponseEntity.ok(usuarioService.atualizarEncarregado(id, request));
+    }
+
+    @PatchMapping("/encarregados/{id}/ativar")
+    public ResponseEntity<EncarregadoResumoResponse> ativarEncarregado(
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(usuarioService.ativarEncarregado(id));
+    }
+
+    @PatchMapping("/encarregados/{id}/desativar")
+    public ResponseEntity<EncarregadoResumoResponse> desativarEncarregado(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(
+                usuarioService.desativarEncarregado(id, authentication.getName())
+        );
     }
 
     @PostMapping

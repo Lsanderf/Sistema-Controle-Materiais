@@ -2,6 +2,7 @@ package com.Lucca.Projeto1.service;
 
 import com.Lucca.Projeto1.dto.usuario.CriarEncarregadoRequest;
 import com.Lucca.Projeto1.dto.usuario.CriarUsuarioRequest;
+import com.Lucca.Projeto1.dto.usuario.AtualizarEncarregadoRequest;
 import com.Lucca.Projeto1.dto.usuario.EncarregadoResumoResponse;
 import com.Lucca.Projeto1.dto.usuario.UsuarioAtualizacaoRequest;
 import com.Lucca.Projeto1.dto.usuario.UsuarioResponse;
@@ -11,6 +12,7 @@ import com.Lucca.Projeto1.model.Role;
 import com.Lucca.Projeto1.model.Usuario;
 import com.Lucca.Projeto1.repository.UsuarioRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -76,6 +78,56 @@ public class UsuarioService {
         );
 
         return paraEncarregadoResumoResponse(usuario);
+    }
+
+    public EncarregadoResumoResponse buscarEncarregado(Long id) {
+        return paraEncarregadoResumoResponse(buscarEncarregadoEntidade(id));
+    }
+
+    @Transactional
+    public EncarregadoResumoResponse atualizarEncarregado(
+            Long id,
+            AtualizarEncarregadoRequest request
+    ) {
+        Usuario usuario = buscarEncarregadoEntidade(id);
+        String usernameNormalizado = normalizarUsername(request.getUsername());
+
+        usuarioRepository.findByUsernameIgnoreCase(usernameNormalizado)
+                .filter(outroUsuario -> !outroUsuario.getId().equals(usuario.getId()))
+                .ifPresent(outroUsuario -> {
+                    throw new RegraNegocioException("Já existe um usuário com esse username");
+                });
+
+        usuario.setUsername(usernameNormalizado);
+        if (request.getNovaSenha() != null && !request.getNovaSenha().isBlank()) {
+            usuario.setSenha(passwordEncoder.encode(request.getNovaSenha()));
+        }
+        return paraEncarregadoResumoResponse(usuarioRepository.save(usuario));
+    }
+
+    @Transactional
+    public EncarregadoResumoResponse ativarEncarregado(Long id) {
+        Usuario usuario = buscarEncarregadoEntidade(id);
+        if (usuario.isAtivo()) {
+            throw new RegraNegocioException("O usuário já está ativo");
+        }
+        usuario.setAtivo(true);
+        usuario.setDataInativacao(null);
+        return paraEncarregadoResumoResponse(usuarioRepository.save(usuario));
+    }
+
+    @Transactional
+    public EncarregadoResumoResponse desativarEncarregado(Long id, String usernameAutenticado) {
+        Usuario usuario = buscarEncarregadoEntidade(id);
+        if (usuario.getUsername().equalsIgnoreCase(usernameAutenticado)) {
+            throw new RegraNegocioException("Você não pode desativar sua própria conta");
+        }
+        if (!usuario.isAtivo()) {
+            throw new RegraNegocioException("O usuário já está inativo");
+        }
+        usuario.setAtivo(false);
+        usuario.setDataInativacao(LocalDateTime.now());
+        return paraEncarregadoResumoResponse(usuarioRepository.save(usuario));
     }
 
     public UsuarioResponse buscarPorId(Long id) {
@@ -232,6 +284,14 @@ public class UsuarioService {
                                 "Usuário não encontrado"
                         )
                 );
+    }
+
+    private Usuario buscarEncarregadoEntidade(Long id) {
+        Usuario usuario = buscarEntidade(id);
+        if (usuario.getRole() != Role.ENCARREGADO) {
+            throw new AccessDeniedException("Este endpoint administra somente encarregados");
+        }
+        return usuario;
     }
 
     private String normalizarUsername(String username) {

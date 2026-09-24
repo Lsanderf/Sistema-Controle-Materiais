@@ -125,7 +125,7 @@ class MatrizAutorizacaoIntegrationTests {
     }
 
     @Test
-    void gerenteConsultaEncarregadosEContratosSemGerenciarCadastros()
+    void gerenteAdministraEncarregadosEGerenciaContratosSemGerenciarOutrosCadastros()
             throws Exception {
         mockMvc.perform(get("/usuarios/encarregados")
                         .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken)))
@@ -141,7 +141,8 @@ class MatrizAutorizacaoIntegrationTests {
                                 "username", "encarregado-do-gerente",
                                 "password", SENHA
                         ))))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.username").value("encarregado-do-gerente"));
 
         mockMvc.perform(get("/contratos")
                         .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken)))
@@ -157,6 +158,12 @@ class MatrizAutorizacaoIntegrationTests {
                         .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken)))
                 .andExpect(status().isOk());
 
+        long contratoCriadoPeloGerente = criarContrato(
+                gerenteToken,
+                "Contrato criado pelo gerente",
+                "Criado para uma requisição"
+        );
+
         mockMvc.perform(put("/contratos/{id}", contratoId)
                         .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -165,15 +172,15 @@ class MatrizAutorizacaoIntegrationTests {
                                 "Descrição editada",
                                 true
                         )))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk());
 
         mockMvc.perform(patch("/contratos/{id}/desativar", contratoId)
                         .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk());
 
         mockMvc.perform(patch("/contratos/{id}/ativar", contratoId)
                         .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk());
 
         mockMvc.perform(get("/materiais")
                         .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken)))
@@ -195,6 +202,7 @@ class MatrizAutorizacaoIntegrationTests {
                 .andExpect(status().isForbidden());
 
         assertTrue(contratoRepository.existsById(contratoId));
+        assertTrue(contratoRepository.existsById(contratoCriadoPeloGerente));
     }
 
     @Test

@@ -15,8 +15,7 @@ public interface RequisicaoRepository extends JpaRepository<Requisicao, Long> {
             join fetch r.gerenteSolicitante
             join fetch r.encarregadoDestinatario
             join fetch r.contrato
-            join fetch r.itens i
-            join fetch i.material
+            join fetch r.itens
             order by r.criadaEm desc
             """)
     List<Requisicao> findAllComDetalhes();
@@ -26,8 +25,7 @@ public interface RequisicaoRepository extends JpaRepository<Requisicao, Long> {
             join fetch r.gerenteSolicitante
             join fetch r.encarregadoDestinatario
             join fetch r.contrato
-            join fetch r.itens i
-            join fetch i.material
+            join fetch r.itens
             where r.gerenteSolicitante.id = :usuarioId
             order by r.criadaEm desc
             """)
@@ -38,8 +36,7 @@ public interface RequisicaoRepository extends JpaRepository<Requisicao, Long> {
             join fetch r.gerenteSolicitante
             join fetch r.encarregadoDestinatario
             join fetch r.contrato
-            join fetch r.itens i
-            join fetch i.material
+            join fetch r.itens
             where r.encarregadoDestinatario.id = :usuarioId
             order by r.criadaEm desc
             """)
@@ -50,8 +47,7 @@ public interface RequisicaoRepository extends JpaRepository<Requisicao, Long> {
             join fetch r.gerenteSolicitante
             join fetch r.encarregadoDestinatario
             join fetch r.contrato
-            join fetch r.itens i
-            join fetch i.material
+            join fetch r.itens
             where r.id = :id
             """)
     Optional<Requisicao> findByIdComDetalhes(@Param("id") Long id);

@@ -60,6 +60,56 @@ class MigrationCompatibilityTests {
     }
 
     @Test
+    void migrationV13PreservaDescricaoDosItensLegadosERemoveDependenciaDeMaterial() throws Exception {
+        String databaseName = "migration_" + UUID.randomUUID().toString().replace("-", "");
+        String url = "jdbc:h2:mem:" + databaseName + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1";
+
+        try (
+                Connection connection = DriverManager.getConnection(url, "sa", "");
+                Statement statement = connection.createStatement()
+        ) {
+            statement.execute("CREATE TABLE tb_materiais (id BIGINT PRIMARY KEY, nome VARCHAR(150) NOT NULL)");
+            statement.execute("CREATE TABLE tb_requisicoes (id BIGINT PRIMARY KEY)");
+            statement.execute("""
+                    CREATE TABLE tb_requisicao_itens (
+                        id BIGINT PRIMARY KEY,
+                        requisicao_id BIGINT NOT NULL,
+                        material_id BIGINT NOT NULL,
+                        quantidade INTEGER NOT NULL,
+                        CONSTRAINT uk_requisicao_itens_material UNIQUE (requisicao_id, material_id),
+                        CONSTRAINT fk_requisicao_itens_requisicao FOREIGN KEY (requisicao_id) REFERENCES tb_requisicoes(id),
+                        CONSTRAINT fk_requisicao_itens_material FOREIGN KEY (material_id) REFERENCES tb_materiais(id)
+                    )
+                    """);
+            statement.execute("INSERT INTO tb_requisicoes (id) VALUES (1)");
+            statement.execute("INSERT INTO tb_materiais (id, nome) VALUES (1, 'Capacete')");
+            statement.execute("INSERT INTO tb_requisicao_itens (id, requisicao_id, material_id, quantidade) VALUES (1, 1, 1, 5)");
+        }
+
+        MigrateResult result = Flyway.configure().dataSource(url, "sa", "")
+                .locations("classpath:db/migration").baselineOnMigrate(true)
+                .baselineVersion("12").target("13").load().migrate();
+
+        assertEquals(1, result.migrationsExecuted);
+        try (
+                Connection connection = DriverManager.getConnection(url, "sa", "");
+                Statement statement = connection.createStatement();
+                Statement columnStatement = connection.createStatement();
+                ResultSet item = statement.executeQuery("SELECT descricao, quantidade FROM tb_requisicao_itens WHERE id = 1");
+                ResultSet column = columnStatement.executeQuery("""
+                        SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                        WHERE TABLE_NAME = 'TB_REQUISICAO_ITENS' AND COLUMN_NAME = 'MATERIAL_ID'
+                        """)
+        ) {
+            assertTrue(item.next());
+            assertEquals("Capacete", item.getString("descricao"));
+            assertEquals(5, item.getInt("quantidade"));
+            assertTrue(column.next());
+            assertEquals(0, column.getInt(1));
+        }
+    }
+
+    @Test
     void migrationV3PreservaMovimentacoesAntigasSemUsuario() throws Exception {
         String databaseName = "migration_"
                 + UUID.randomUUID().toString().replace("-", "");

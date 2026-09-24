@@ -21,6 +21,5 @@ public record RequisicaoResponse(
 ) {
     public record UsuarioResumo(Long id, String nome) { }
     public record ContratoResumo(Long id, String nome) { }
-    public record Item(Long id, MaterialResumo material, Integer quantidade) { }
-    public record MaterialResumo(Long id, String nome) { }
+    public record Item(Long id, String descricao, Integer quantidade) { }
 }

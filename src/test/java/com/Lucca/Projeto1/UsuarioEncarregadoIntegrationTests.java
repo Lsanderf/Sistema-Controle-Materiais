@@ -160,7 +160,7 @@ class UsuarioEncarregadoIntegrationTests {
         request.put("role", "ADMIN");
 
         mockMvc.perform(post("/usuarios/encarregados")
-                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(request)))
                 .andExpect(status().isCreated())
@@ -179,6 +179,63 @@ class UsuarioEncarregadoIntegrationTests {
         assertEquals(Role.ENCARREGADO, criado.getRole());
         assertFalse(SENHA.equals(criado.getSenha()));
         assertTrue(passwordEncoder.matches(SENHA, criado.getSenha()));
+    }
+
+    @Test
+    void gerenteEditaEAlteraStatusApenasDeEncarregado() throws Exception {
+        Usuario encarregado = usuarioRepository.findByUsernameIgnoreCase("encarregado").orElseThrow();
+        Usuario admin = usuarioRepository.findByUsernameIgnoreCase("admin").orElseThrow();
+
+        mockMvc.perform(put("/usuarios/encarregados/{id}", encarregado.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of("username", "encarregado-editado", "novaSenha", "novaSenha123", "role", "ADMIN"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value("encarregado-editado"));
+
+        assertEquals(Role.ENCARREGADO, usuarioRepository.findById(encarregado.getId()).orElseThrow().getRole());
+        assertTrue(passwordEncoder.matches("novaSenha123", usuarioRepository.findById(encarregado.getId()).orElseThrow().getSenha()));
+
+        mockMvc.perform(patch("/usuarios/encarregados/{id}/desativar", encarregado.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.ativo").value(false));
+        mockMvc.perform(patch("/usuarios/encarregados/{id}/ativar", encarregado.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.ativo").value(true));
+
+        mockMvc.perform(put("/usuarios/encarregados/{id}", admin.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of("username", "admin-alterado"))))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(patch("/usuarios/encarregados/{id}/desativar", admin.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void gerenteNaoPodeUsarAdministracaoGeralParaCriarOutrosPerfis() throws Exception {
+        mockMvc.perform(post("/usuarios")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(criarUsuarioPayload(
+                                "Admin indevido", TestUsuarioFactory.proximoCpf(), "11988887777", "admin-indevido", "ADMIN"
+                        ))))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/usuarios")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(criarUsuarioPayload(
+                                "Operador indevido", TestUsuarioFactory.proximoCpf(), "11988887778", "operador-indevido", "OPERADOR"
+                        ))))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/usuarios")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(criarUsuarioPayload(
+                                "Gerente indevido", TestUsuarioFactory.proximoCpf(), "11988887779", "gerente-indevido", "GERENTE"
+                        ))))
+                .andExpect(status().isForbidden());
     }
 
     @Test
