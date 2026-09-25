@@ -159,7 +159,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/requisicoes", "/requisicoes/**")
                         .hasAnyRole("ADMIN", "GERENTE", "ENCARREGADO")
                         .requestMatchers(HttpMethod.PATCH, "/requisicoes/*/visualizar", "/requisicoes/*/concluir")
-                        .hasRole("GERENTE")
+                        .hasRole("ENCARREGADO")
                         .requestMatchers(HttpMethod.PATCH, "/requisicoes/*/cancelar")
                         .hasRole("GERENTE")
                         .requestMatchers(HttpMethod.GET, "/notas-fiscais", "/notas-fiscais/**")
