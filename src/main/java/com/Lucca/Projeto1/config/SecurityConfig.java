@@ -2,6 +2,7 @@ package com.Lucca.Projeto1.config;
 
 import com.Lucca.Projeto1.security.ApiSecurityErrorWriter;
 import com.Lucca.Projeto1.security.JwtProperties;
+import com.Lucca.Projeto1.security.LoginRateLimitFilter;
 import com.Lucca.Projeto1.security.UsuarioAtivoFilter;
 import com.Lucca.Projeto1.repository.UsuarioRepository;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
@@ -28,7 +29,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 
 import java.util.Arrays;
@@ -42,13 +43,12 @@ public class SecurityConfig {
     private final ApiSecurityErrorWriter errorWriter;
     private final UsuarioRepository usuarioRepository;
 
+
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost:5173"
-        ));
+        configuration.setAllowedOrigins(allowedOrigins());
 
         configuration.setAllowedMethods(List.of(
                 "GET",
@@ -81,20 +81,36 @@ public class SecurityConfig {
         this.usuarioRepository = usuarioRepository;
     }
 
+
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             CorsConfigurationSource corsConfigurationSource,
-            JwtAuthenticationConverter jwtAuthenticationConverter
+            JwtAuthenticationConverter jwtAuthenticationConverter,
+            LoginRateLimitFilter loginRateLimitFilter
     ) throws Exception {
+
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                .cors(cors -> cors.configurationSource(corsConfigurationSource))
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+
+                .cors(cors ->
+                        cors.configurationSource(corsConfigurationSource)
                 )
+
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(
+                                SessionCreationPolicy.STATELESS
+                        )
+                )
+
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
+
+                .addFilterBefore(
+                        loginRateLimitFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                )
+
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint((request, response, authException) ->
                                 errorWriter.write(
@@ -125,7 +141,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PATCH, "/usuarios/encarregados/*/ativar", "/usuarios/encarregados/*/desativar")
                         .hasAnyRole("ADMIN", "GERENTE")
                         .requestMatchers(HttpMethod.GET, "/materiais", "/materiais/**")
-                        .hasAnyRole("ADMIN", "OPERADOR", "GERENTE")
+                        .hasAnyRole("ADMIN", "OPERADOR")
                         .requestMatchers(HttpMethod.GET, "/contratos", "/contratos/**")
                         .hasAnyRole("ADMIN", "OPERADOR", "GERENTE")
                         .requestMatchers(HttpMethod.POST, "/contratos")
@@ -143,7 +159,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/requisicoes", "/requisicoes/**")
                         .hasAnyRole("ADMIN", "GERENTE", "ENCARREGADO")
                         .requestMatchers(HttpMethod.PATCH, "/requisicoes/*/visualizar", "/requisicoes/*/concluir")
-                        .hasRole("ENCARREGADO")
+                        .hasRole("GERENTE")
                         .requestMatchers(HttpMethod.PATCH, "/requisicoes/*/cancelar")
                         .hasRole("GERENTE")
                         .requestMatchers(HttpMethod.GET, "/notas-fiscais", "/notas-fiscais/**")
@@ -285,4 +301,7 @@ public class SecurityConfig {
 
         return allowedOrigins;
     }
+
+
+
 }

@@ -9,7 +9,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 
 @Component
-public class JwtProperties {
+public class    JwtProperties {
 
     private static final int MIN_SECRET_BYTES = 32;
     private final String secret;
