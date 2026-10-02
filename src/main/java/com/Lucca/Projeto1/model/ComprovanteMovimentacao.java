@@ -96,6 +96,21 @@ public class ComprovanteMovimentacao {
     @Column(name = "movimentacao_origem_id", updatable = false)
     private Long movimentacaoOrigemId;
 
+    @Column(name = "solicitacao_retirada_id", updatable = false)
+    private Long solicitacaoRetiradaId;
+
+    @Column(name = "operador_responsavel_id", updatable = false)
+    private Long operadorResponsavelId;
+
+    @Column(name = "operador_responsavel_nome", length = 150, updatable = false)
+    private String operadorResponsavelNome;
+
+    @Column(name = "encarregado_assinante_id", updatable = false)
+    private Long encarregadoAssinanteId;
+
+    @Column(name = "encarregado_assinante_nome", length = 150, updatable = false)
+    private String encarregadoAssinanteNome;
+
     @Column(name = "gerado_em", nullable = false, updatable = false)
     private LocalDateTime geradoEm;
 
@@ -136,6 +151,17 @@ public class ComprovanteMovimentacao {
         if (usuario != null) {
             usuarioId = usuario.getId();
             usuarioUsername = usuario.getUsername();
+        }
+
+        if (movimentacao.getSolicitacaoRetirada() != null) {
+            solicitacaoRetiradaId = movimentacao.getSolicitacaoRetirada().getId();
+        }
+        operadorResponsavelId = usuarioId;
+        operadorResponsavelNome = usuario == null ? null : usuario.getNome();
+        Usuario encarregadoAssinante = movimentacao.getEncarregadoAssinante();
+        if (encarregadoAssinante != null) {
+            encarregadoAssinanteId = encarregadoAssinante.getId();
+            encarregadoAssinanteNome = encarregadoAssinante.getNome();
         }
 
         NotaFiscalEntrada notaFiscal = movimentacao.getNotaFiscal();
@@ -266,6 +292,12 @@ public class ComprovanteMovimentacao {
     public Long getMovimentacaoOrigemId() {
         return movimentacaoOrigemId;
     }
+
+    public Long getSolicitacaoRetiradaId() { return solicitacaoRetiradaId; }
+    public Long getOperadorResponsavelId() { return operadorResponsavelId; }
+    public String getOperadorResponsavelNome() { return operadorResponsavelNome; }
+    public Long getEncarregadoAssinanteId() { return encarregadoAssinanteId; }
+    public String getEncarregadoAssinanteNome() { return encarregadoAssinanteNome; }
 
     public LocalDateTime getGeradoEm() {
         return geradoEm;

@@ -43,11 +43,17 @@ public class EvidenciaMovimentacao {
     @Column(name = "data_evidencia", nullable = false, updatable = false)
     private LocalDateTime dataEvidencia;
 
-    @Column(name = "funcionario_id", nullable = false, updatable = false)
+    @Column(name = "funcionario_id", updatable = false)
     private Long funcionarioId;
 
-    @Column(name = "funcionario_nome", nullable = false, length = 150, updatable = false)
+    @Column(name = "funcionario_nome", length = 150, updatable = false)
     private String funcionarioNome;
+
+    @Column(name = "encarregado_id", updatable = false)
+    private Long encarregadoId;
+
+    @Column(name = "encarregado_nome", length = 150, updatable = false)
+    private String encarregadoNome;
 
     @Column(name = "registrada_por_id", nullable = false, updatable = false)
     private Long registradaPorId;
@@ -79,6 +85,8 @@ public class EvidenciaMovimentacao {
             LocalDateTime dataEvidencia,
             Long funcionarioId,
             String funcionarioNome,
+            Long encarregadoId,
+            String encarregadoNome,
             Long registradaPorId,
             String registradaPorUsername,
             String storageKey,
@@ -92,6 +100,8 @@ public class EvidenciaMovimentacao {
         this.dataEvidencia = dataEvidencia;
         this.funcionarioId = funcionarioId;
         this.funcionarioNome = funcionarioNome;
+        this.encarregadoId = encarregadoId;
+        this.encarregadoNome = encarregadoNome;
         this.registradaPorId = registradaPorId;
         this.registradaPorUsername = registradaPorUsername;
         this.storageKey = storageKey;
@@ -99,6 +109,38 @@ public class EvidenciaMovimentacao {
         this.contentType = contentType;
         this.tamanhoBytes = tamanhoBytes;
         this.sha256 = sha256;
+    }
+
+    public EvidenciaMovimentacao(
+            Long movimentacaoId,
+            TipoEvidenciaMovimentacao tipo,
+            LocalDateTime dataEvidencia,
+            Long funcionarioId,
+            String funcionarioNome,
+            Long registradaPorId,
+            String registradaPorUsername,
+            String storageKey,
+            String nomeArquivoOriginal,
+            String contentType,
+            Long tamanhoBytes,
+            String sha256
+    ) {
+        this(
+                movimentacaoId,
+                tipo,
+                dataEvidencia,
+                funcionarioId,
+                funcionarioNome,
+                null,
+                null,
+                registradaPorId,
+                registradaPorUsername,
+                storageKey,
+                nomeArquivoOriginal,
+                contentType,
+                tamanhoBytes,
+                sha256
+        );
     }
 
     public Long getId() {
@@ -123,6 +165,14 @@ public class EvidenciaMovimentacao {
 
     public String getFuncionarioNome() {
         return funcionarioNome;
+    }
+
+    public Long getEncarregadoId() {
+        return encarregadoId;
+    }
+
+    public String getEncarregadoNome() {
+        return encarregadoNome;
     }
 
     public Long getRegistradaPorId() {

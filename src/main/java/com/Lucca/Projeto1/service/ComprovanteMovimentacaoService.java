@@ -23,15 +23,18 @@ public class ComprovanteMovimentacaoService {
     private final ComprovanteMovimentacaoRepository comprovanteRepository;
     private final EvidenciaMovimentacaoRepository evidenciaRepository;
     private final MovimentacaoRepository movimentacaoRepository;
+    private final AssinaturaRetiradaService assinaturaRetiradaService;
 
     public ComprovanteMovimentacaoService(
             ComprovanteMovimentacaoRepository comprovanteRepository,
             EvidenciaMovimentacaoRepository evidenciaRepository,
-            MovimentacaoRepository movimentacaoRepository
+            MovimentacaoRepository movimentacaoRepository,
+            AssinaturaRetiradaService assinaturaRetiradaService
     ) {
         this.comprovanteRepository = comprovanteRepository;
         this.evidenciaRepository = evidenciaRepository;
         this.movimentacaoRepository = movimentacaoRepository;
+        this.assinaturaRetiradaService = assinaturaRetiradaService;
     }
 
     @Transactional
@@ -64,7 +67,10 @@ public class ComprovanteMovimentacaoService {
 
         return ComprovanteMovimentacaoMapper.paraResponse(
                 comprovante,
-                evidencias
+                evidencias,
+                assinaturaRetiradaService.buscarPorSolicitacao(
+                        comprovante.getSolicitacaoRetiradaId()
+                ).orElse(null)
         );
     }
 

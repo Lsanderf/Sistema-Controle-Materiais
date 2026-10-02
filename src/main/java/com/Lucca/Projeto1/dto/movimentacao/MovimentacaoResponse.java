@@ -11,6 +11,8 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 
         private Long id;
         private String funcionario;
+        private Long encarregadoId;
+        private String encarregado;
         private String contrato;
         private String material;
         private Integer quantidade;
@@ -35,6 +37,8 @@ import com.fasterxml.jackson.annotation.JsonFormat;
         public MovimentacaoResponse(
                 Long id,
                 String funcionario,
+                Long encarregadoId,
+                String encarregado,
                 String contrato,
                 String material,
                 Integer quantidade,
@@ -50,6 +54,8 @@ import com.fasterxml.jackson.annotation.JsonFormat;
         ) {
             this.id = id;
             this.funcionario = funcionario;
+            this.encarregadoId = encarregadoId;
+            this.encarregado = encarregado;
             this.contrato = contrato;
             this.material = material;
             this.quantidade = quantidade;
@@ -71,6 +77,14 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 
         public String getFuncionario() {
             return funcionario;
+        }
+
+        public Long getEncarregadoId() {
+            return encarregadoId;
+        }
+
+        public String getEncarregado() {
+            return encarregado;
         }
 
         public String getContrato() {

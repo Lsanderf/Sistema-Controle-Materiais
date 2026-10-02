@@ -26,13 +26,29 @@ public class Requisicao {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "gerente_solicitante_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "gerente_solicitante_id")
     private Usuario gerenteSolicitante;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "encarregado_destinatario_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "encarregado_destinatario_id")
     private Usuario encarregadoDestinatario;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "operador_registrador_id")
+    private Usuario operadorRegistrador;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "encarregado_necessidade_id")
+    private Usuario encarregadoNecessidade;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "gerente_destinatario_id")
+    private Usuario gerenteDestinatario;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private OrigemRequisicao origem = OrigemRequisicao.MANUAL;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "contrato_id", nullable = false)
@@ -66,6 +82,14 @@ public class Requisicao {
     public void setGerenteSolicitante(Usuario gerenteSolicitante) { this.gerenteSolicitante = gerenteSolicitante; }
     public Usuario getEncarregadoDestinatario() { return encarregadoDestinatario; }
     public void setEncarregadoDestinatario(Usuario encarregadoDestinatario) { this.encarregadoDestinatario = encarregadoDestinatario; }
+    public Usuario getOperadorRegistrador() { return operadorRegistrador; }
+    public void setOperadorRegistrador(Usuario operadorRegistrador) { this.operadorRegistrador = operadorRegistrador; }
+    public Usuario getEncarregadoNecessidade() { return encarregadoNecessidade; }
+    public void setEncarregadoNecessidade(Usuario encarregadoNecessidade) { this.encarregadoNecessidade = encarregadoNecessidade; }
+    public Usuario getGerenteDestinatario() { return gerenteDestinatario; }
+    public void setGerenteDestinatario(Usuario gerenteDestinatario) { this.gerenteDestinatario = gerenteDestinatario; }
+    public OrigemRequisicao getOrigem() { return origem; }
+    public void setOrigem(OrigemRequisicao origem) { this.origem = origem; }
     public Contrato getContrato() { return contrato; }
     public void setContrato(Contrato contrato) { this.contrato = contrato; }
     public TipoMovimentacao getTipo() { return tipo; }

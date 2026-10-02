@@ -22,12 +22,19 @@ public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long
             Long contratoId,
             Long materialId
     );
+    List<Movimentacao> findByEncarregadoAssinanteId(Long encarregadoId);
+    List<Movimentacao> findByEncarregadoAssinanteIdAndContratoIdAndMaterialId(
+            Long encarregadoId,
+            Long contratoId,
+            Long materialId
+    );
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @EntityGraph(attributePaths = {
             "material",
             "registradoPor",
             "funcionario",
+            "encarregadoAssinante",
             "contrato",
             "notaFiscal",
             "movimentacaoOrigem"
@@ -39,6 +46,7 @@ public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long
             "material",
             "registradoPor",
             "funcionario",
+            "encarregadoAssinante",
             "contrato",
             "notaFiscal",
             "movimentacaoOrigem"
@@ -49,6 +57,7 @@ public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long
             "material",
             "registradoPor",
             "funcionario",
+            "encarregadoAssinante",
             "contrato",
             "notaFiscal",
             "movimentacaoOrigem"
@@ -61,6 +70,7 @@ public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long
             "material",
             "registradoPor",
             "funcionario",
+            "encarregadoAssinante",
             "contrato",
             "notaFiscal",
             "movimentacaoOrigem"
@@ -74,6 +84,7 @@ public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long
             "material",
             "registradoPor",
             "funcionario",
+            "encarregadoAssinante",
             "contrato",
             "notaFiscal",
             "movimentacaoOrigem"

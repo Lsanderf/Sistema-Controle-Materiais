@@ -25,6 +25,16 @@ public class MovimentacaoMapper {
                         ? movimentacao.getFuncionario().getNome()
                         : null;
 
+        Long encarregadoId =
+                movimentacao.getEncarregadoAssinante() != null
+                        ? movimentacao.getEncarregadoAssinante().getId()
+                        : null;
+
+        String nomeEncarregado =
+                movimentacao.getEncarregadoAssinante() != null
+                        ? movimentacao.getEncarregadoAssinante().getNome()
+                        : null;
+
         String nomeContrato =
                 movimentacao.getContrato() != null
                         ? movimentacao.getContrato().getNome()
@@ -58,6 +68,8 @@ public class MovimentacaoMapper {
         return new MovimentacaoResponse(
                 movimentacao.getId(),
                 nomeFuncionario,
+                encarregadoId,
+                nomeEncarregado,
                 nomeContrato,
                 nomeMaterial,
                 movimentacao.getQuantidade(),

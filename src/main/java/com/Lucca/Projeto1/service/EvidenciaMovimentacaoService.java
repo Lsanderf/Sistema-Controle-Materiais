@@ -76,6 +76,11 @@ public class EvidenciaMovimentacaoService {
                 .findByIdComBloqueio(movimentacaoId)
                 .orElseThrow(() -> movimentacaoNaoEncontrada(movimentacaoId));
 
+        if (movimentacao.getSolicitacaoRetirada() != null) {
+            throw new RegraNegocioException(
+                    "A assinatura da retirada pertence à solicitação relacionada"
+            );
+        }
         validarTipoComAssinatura(movimentacao);
         if (evidenciaRepository.existsByMovimentacaoIdAndTipo(
                 movimentacaoId,
@@ -117,6 +122,7 @@ public class EvidenciaMovimentacaoService {
         byte[] conteudo = imagem.conteudo();
         Usuario usuario = usuarioAutenticadoService.obter();
         Funcionario funcionario = movimentacao.getFuncionario();
+        Usuario encarregado = movimentacao.getEncarregadoAssinante();
         String storageKey = "movimentacoes/" + movimentacaoId + "/"
                 + tipo.name().toLowerCase(Locale.ROOT) + "/" + UUID.randomUUID() + "." + imagem.extensao();
 
@@ -130,8 +136,10 @@ public class EvidenciaMovimentacaoService {
                     movimentacaoId,
                     tipo,
                     LocalDateTime.now(),
-                    funcionario.getId(),
-                    funcionario.getNome(),
+                    funcionario == null ? null : funcionario.getId(),
+                    funcionario == null ? null : funcionario.getNome(),
+                    encarregado == null ? null : encarregado.getId(),
+                    encarregado == null ? null : encarregado.getNome(),
                     usuario.getId(),
                     usuario.getUsername(),
                     storageKey,
@@ -187,9 +195,16 @@ public class EvidenciaMovimentacaoService {
                     "Assinaturas são permitidas apenas em retiradas e devoluções"
             );
         }
-        if (movimentacao.getFuncionario() == null) {
+        if (movimentacao.getFuncionario() == null
+                && movimentacao.getEncarregadoAssinante() == null) {
             throw new RegraNegocioException(
                     "A movimentação não possui funcionário relacionado"
+            );
+        }
+        if (movimentacao.getFuncionario() != null
+                && movimentacao.getEncarregadoAssinante() != null) {
+            throw new RegraNegocioException(
+                    "A movimentacao possui mais de um responsavel relacionado"
             );
         }
     }

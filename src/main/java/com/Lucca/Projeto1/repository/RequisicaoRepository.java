@@ -12,8 +12,11 @@ public interface RequisicaoRepository extends JpaRepository<Requisicao, Long> {
 
     @Query("""
             select distinct r from Requisicao r
-            join fetch r.gerenteSolicitante
-            join fetch r.encarregadoDestinatario
+            left join fetch r.gerenteSolicitante
+            left join fetch r.encarregadoDestinatario
+            left join fetch r.operadorRegistrador
+            left join fetch r.encarregadoNecessidade
+            left join fetch r.gerenteDestinatario
             join fetch r.contrato
             join fetch r.itens
             order by r.criadaEm desc
@@ -22,30 +25,39 @@ public interface RequisicaoRepository extends JpaRepository<Requisicao, Long> {
 
     @Query("""
             select distinct r from Requisicao r
-            join fetch r.gerenteSolicitante
-            join fetch r.encarregadoDestinatario
+            left join fetch r.gerenteSolicitante
+            left join fetch r.encarregadoDestinatario
+            left join fetch r.operadorRegistrador
+            left join fetch r.encarregadoNecessidade
+            left join fetch r.gerenteDestinatario
             join fetch r.contrato
             join fetch r.itens
-            where r.gerenteSolicitante.id = :usuarioId
+            where r.gerenteSolicitante.id = :usuarioId or r.gerenteDestinatario.id = :usuarioId
             order by r.criadaEm desc
             """)
     List<Requisicao> findByGerenteSolicitanteIdComDetalhes(@Param("usuarioId") Long usuarioId);
 
     @Query("""
             select distinct r from Requisicao r
-            join fetch r.gerenteSolicitante
-            join fetch r.encarregadoDestinatario
+            left join fetch r.gerenteSolicitante
+            left join fetch r.encarregadoDestinatario
+            left join fetch r.operadorRegistrador
+            left join fetch r.encarregadoNecessidade
+            left join fetch r.gerenteDestinatario
             join fetch r.contrato
             join fetch r.itens
-            where r.encarregadoDestinatario.id = :usuarioId
+            where r.encarregadoDestinatario.id = :usuarioId or r.encarregadoNecessidade.id = :usuarioId
             order by r.criadaEm desc
             """)
     List<Requisicao> findByEncarregadoDestinatarioIdComDetalhes(@Param("usuarioId") Long usuarioId);
 
     @Query("""
             select distinct r from Requisicao r
-            join fetch r.gerenteSolicitante
-            join fetch r.encarregadoDestinatario
+            left join fetch r.gerenteSolicitante
+            left join fetch r.encarregadoDestinatario
+            left join fetch r.operadorRegistrador
+            left join fetch r.encarregadoNecessidade
+            left join fetch r.gerenteDestinatario
             join fetch r.contrato
             join fetch r.itens
             where r.id = :id

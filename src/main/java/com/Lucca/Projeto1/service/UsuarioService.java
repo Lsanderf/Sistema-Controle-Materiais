@@ -6,6 +6,7 @@ import com.Lucca.Projeto1.dto.usuario.AtualizarEncarregadoRequest;
 import com.Lucca.Projeto1.dto.usuario.EncarregadoResumoResponse;
 import com.Lucca.Projeto1.dto.usuario.UsuarioAtualizacaoRequest;
 import com.Lucca.Projeto1.dto.usuario.UsuarioResponse;
+import com.Lucca.Projeto1.dto.usuario.UsuarioResumoResponse;
 import com.Lucca.Projeto1.exception.RecursoNaoEncontradoException;
 import com.Lucca.Projeto1.exception.RegraNegocioException;
 import com.Lucca.Projeto1.model.Role;
@@ -60,6 +61,15 @@ public class UsuarioService {
                 .findByRoleOrderByNomeAsc(Role.ENCARREGADO)
                 .stream()
                 .map(this::paraEncarregadoResumoResponse)
+                .toList();
+    }
+
+    public List<UsuarioResumoResponse> listarGerentes() {
+        return usuarioRepository.findByRoleOrderByNomeAsc(Role.GERENTE)
+                .stream()
+                .map(usuario -> new UsuarioResumoResponse(
+                        usuario.getId(), usuario.getNome(), usuario.isAtivo()
+                ))
                 .toList();
     }
 

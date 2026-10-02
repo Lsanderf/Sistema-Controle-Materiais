@@ -64,6 +64,14 @@ public class Movimentacao {
     private Usuario registradoPor;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "encarregado_assinante_id", nullable = true, updatable = false)
+    private Usuario encarregadoAssinante;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "solicitacao_retirada_id", nullable = true, updatable = false)
+    private SolicitacaoRetirada solicitacaoRetirada;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(name = "nota_fiscal_id", nullable = true, updatable = false)
     private NotaFiscalEntrada notaFiscal;
 
@@ -177,6 +185,11 @@ public class Movimentacao {
     public void setRegistradoPor(Usuario registradoPor) {
         this.registradoPor = registradoPor;
     }
+
+    public Usuario getEncarregadoAssinante() { return encarregadoAssinante; }
+    public void setEncarregadoAssinante(Usuario encarregadoAssinante) { this.encarregadoAssinante = encarregadoAssinante; }
+    public SolicitacaoRetirada getSolicitacaoRetirada() { return solicitacaoRetirada; }
+    public void setSolicitacaoRetirada(SolicitacaoRetirada solicitacaoRetirada) { this.solicitacaoRetirada = solicitacaoRetirada; }
 
     public NotaFiscalEntrada getNotaFiscal() {
         return notaFiscal;

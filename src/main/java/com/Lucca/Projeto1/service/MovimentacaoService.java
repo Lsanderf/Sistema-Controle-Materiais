@@ -16,6 +16,7 @@ import com.Lucca.Projeto1.repository.ContratoRepository;
 import com.Lucca.Projeto1.repository.FuncionarioRepository;
 import com.Lucca.Projeto1.repository.MaterialRepository;
 import com.Lucca.Projeto1.repository.MovimentacaoRepository;
+import com.Lucca.Projeto1.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -40,6 +41,7 @@ public class MovimentacaoService {
     private final ContratoRepository contratoRepository;
     private final FuncionarioRepository funcionarioRepository;
     private final MaterialRepository materialRepository;
+    private final UsuarioRepository usuarioRepository;
     private final UsuarioAutenticadoService usuarioAutenticadoService;
     private final ComprovanteMovimentacaoService comprovanteService;
     private final EvidenciaMovimentacaoService evidenciaService;
@@ -50,6 +52,7 @@ public class MovimentacaoService {
             FuncionarioRepository funcionarioRepository,
             ContratoRepository contratoRepository,
             MaterialRepository materialRepository,
+            UsuarioRepository usuarioRepository,
             UsuarioAutenticadoService usuarioAutenticadoService,
             ComprovanteMovimentacaoService comprovanteService,
             EvidenciaMovimentacaoService evidenciaService,
@@ -59,6 +62,7 @@ public class MovimentacaoService {
         this.funcionarioRepository = funcionarioRepository;
         this.contratoRepository = contratoRepository;
         this.materialRepository = materialRepository;
+        this.usuarioRepository = usuarioRepository;
         this.usuarioAutenticadoService = usuarioAutenticadoService;
         this.comprovanteService = comprovanteService;
         this.evidenciaService = evidenciaService;
@@ -103,20 +107,9 @@ public class MovimentacaoService {
             return repetida;
         }
 
-        Funcionario funcionario = funcionarioRepository
-                .findById(request.getFuncionarioId())
-                .orElseThrow(() ->
-                        new RecursoNaoEncontradoException(
-                                "Funcionário não encontrado"
-                        )
-                );
-
-        if (request.getTipo() == TipoMovimentacao.RETIRADA
-                && !Boolean.TRUE.equals(funcionario.isAtivo())) {
-            throw new RegraNegocioException(
-                    "Não é possível registrar retirada para um funcionário inativo"
-            );
-        }
+        Funcionario funcionario = buscarFuncionarioLegado(request.getFuncionarioId());
+        Usuario encarregado = buscarEncarregado(request.getEncarregadoId());
+        validarVinculoDaMovimentacao(request.getTipo(), funcionario, encarregado);
 
         Contrato contrato = contratoRepository
                 .findById(request.getContratoId())
@@ -159,11 +152,9 @@ public class MovimentacaoService {
                     estoqueAtual - request.getQuantidade()
             );
         } else if (request.getTipo() == TipoMovimentacao.DEVOLUCAO) {
-            long quantidadeAindaRetirada = calcularQuantidadeAindaRetirada(
-                    request.getFuncionarioId(),
-                    request.getContratoId(),
-                    request.getMaterialId()
-            );
+            long quantidadeAindaRetirada = encarregado != null
+                    ? calcularQuantidadeAindaRetiradaDoEncarregado(encarregado.getId(), request.getContratoId(), request.getMaterialId())
+                    : calcularQuantidadeAindaRetirada(request.getFuncionarioId(), request.getContratoId(), request.getMaterialId());
 
             if (request.getQuantidade() > quantidadeAindaRetirada) {
                 throw new RegraNegocioException(
@@ -178,6 +169,7 @@ public class MovimentacaoService {
 
         Movimentacao movimentacao = new Movimentacao();
         movimentacao.setFuncionario(funcionario);
+        movimentacao.setEncarregadoAssinante(encarregado);
         movimentacao.setContrato(contrato);
         movimentacao.setMaterial(material);
         movimentacao.setQuantidade(request.getQuantidade());
@@ -266,6 +258,7 @@ public class MovimentacaoService {
 
         Movimentacao estorno = new Movimentacao();
         estorno.setFuncionario(origem.getFuncionario());
+        estorno.setEncarregadoAssinante(origem.getEncarregadoAssinante());
         estorno.setContrato(origem.getContrato());
         estorno.setMaterial(material);
         estorno.setQuantidade(origem.getQuantidade());
@@ -308,6 +301,13 @@ public class MovimentacaoService {
     ) {
         return mapearComSituacaoEstorno(
                 movimentacaoRepository.findByFuncionarioId(funcionarioId)
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List<MovimentacaoResponse> listarPorEncarregado(Long encarregadoId) {
+        return mapearComSituacaoEstorno(
+                movimentacaoRepository.findByEncarregadoAssinanteId(encarregadoId)
         );
     }
 
@@ -427,6 +427,57 @@ public class MovimentacaoService {
                     return 0;
                 })
                 .sum();
+    }
+
+    private long calcularQuantidadeAindaRetiradaDoEncarregado(
+            Long encarregadoId,
+            Long contratoId,
+            Long materialId
+    ) {
+        return movimentacaoRepository
+                .findByEncarregadoAssinanteIdAndContratoIdAndMaterialId(encarregadoId, contratoId, materialId)
+                .stream()
+                .mapToLong(movimentacao -> switch (movimentacao.getTipo()) {
+                    case RETIRADA, ESTORNO_DEVOLUCAO -> movimentacao.getQuantidade();
+                    case DEVOLUCAO, ESTORNO_RETIRADA -> -movimentacao.getQuantidade();
+                    case ENTRADA -> 0;
+                })
+                .sum();
+    }
+
+    private Funcionario buscarFuncionarioLegado(Long funcionarioId) {
+        if (funcionarioId == null) return null;
+        return funcionarioRepository.findById(funcionarioId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Funcionário não encontrado"));
+    }
+
+    private Usuario buscarEncarregado(Long encarregadoId) {
+        if (encarregadoId == null) return null;
+        Usuario encarregado = usuarioRepository.findById(encarregadoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Encarregado não encontrado"));
+        if (encarregado.getRole() != com.Lucca.Projeto1.model.Role.ENCARREGADO || !encarregado.isAtivo()) {
+            throw new RegraNegocioException("O encarregado deve ser um usuário ativo com perfil ENCARREGADO");
+        }
+        return encarregado;
+    }
+
+    private void validarVinculoDaMovimentacao(
+            TipoMovimentacao tipo,
+            Funcionario funcionario,
+            Usuario encarregado
+    ) {
+        if (funcionario != null && encarregado != null) {
+            throw new RegraNegocioException("Informe funcionário legado ou encarregado, não ambos");
+        }
+        if (funcionario == null && encarregado == null) {
+            throw new RegraNegocioException("Informe o encarregado responsável pela devolução");
+        }
+        if (tipo == TipoMovimentacao.RETIRADA && funcionario == null) {
+            throw new RegraNegocioException("Novas retiradas devem ser confirmadas pela solicitação de retirada");
+        }
+        if (tipo == TipoMovimentacao.RETIRADA && !Boolean.TRUE.equals(funcionario.isAtivo())) {
+            throw new RegraNegocioException("Não é possível registrar retirada para um funcionário inativo");
+        }
     }
 
     private String normalizarObservacao(String observacao) {
@@ -571,6 +622,11 @@ public class MovimentacaoService {
         atualizarFingerprint(
                 digest,
                 request.getFuncionarioId()
+        );
+
+        atualizarFingerprint(
+                digest,
+                request.getEncarregadoId()
         );
 
         atualizarFingerprint(

@@ -19,6 +19,10 @@ public record ComprovanteMovimentacaoResponse(
         UsuarioResumoResponse registradoPor,
         NotaFiscalResumoResponse notaFiscal,
         Long movimentacaoOrigemId,
+        Long solicitacaoRetiradaId,
+        UsuarioResponsavelResumoResponse operadorResponsavel,
+        UsuarioResponsavelResumoResponse encarregadoAssinante,
+        AssinaturaRetiradaResponse assinaturaRetirada,
         List<EvidenciaMovimentacaoResponse> evidencias,
         LocalDateTime geradoEm,
         Integer versao
@@ -45,6 +49,19 @@ public record ComprovanteMovimentacaoResponse(
     }
 
     public record UsuarioResumoResponse(Long id, String username) {
+    }
+
+    public record UsuarioResponsavelResumoResponse(Long id, String nome) {
+    }
+
+    public record AssinaturaRetiradaResponse(
+            UsuarioResponsavelResumoResponse encarregadoAssinante,
+            LocalDateTime dataAssinatura,
+            String contentType,
+            Long tamanhoBytes,
+            String sha256,
+            String urlArquivo
+    ) {
     }
 
     public record NotaFiscalResumoResponse(

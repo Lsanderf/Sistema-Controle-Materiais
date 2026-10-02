@@ -703,10 +703,10 @@ class ApiIntegrationTests {
     }
 
     @Test
-    void somenteAdminEOperadorPodemConsultarMateriais() throws Exception {
+    void gerenteTambemPodeConsultarMateriaisParaPrepararRequisicoes() throws Exception {
         Material material = criarMaterial("Capacete", 8);
 
-        for (String authToken : List.of(adminToken, operadorToken)) {
+        for (String authToken : List.of(adminToken, operadorToken, gerenteToken)) {
             mockMvc.perform(get("/materiais")
                             .header(HttpHeaders.AUTHORIZATION, bearer(authToken)))
                     .andExpect(status().isOk())
@@ -717,10 +717,17 @@ class ApiIntegrationTests {
                     .andExpect(jsonPath("$.nome").value("Capacete"));
         }
 
-        mockMvc.perform(get("/materiais")
-                        .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken)))
-                .andExpect(status().isForbidden());
-        mockMvc.perform(get("/materiais/{id}", material.getId())
+    }
+
+    @Test
+    void operadorPodeListarGerentesParaDestinarRequisicaoDeFaltaEstoque() throws Exception {
+        mockMvc.perform(get("/usuarios/gerentes")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].role").doesNotExist())
+                .andExpect(jsonPath("$[0].nome").isString());
+
+        mockMvc.perform(get("/usuarios/gerentes")
                         .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken)))
                 .andExpect(status().isForbidden());
     }

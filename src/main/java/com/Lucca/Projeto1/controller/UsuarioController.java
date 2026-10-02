@@ -6,6 +6,7 @@ import com.Lucca.Projeto1.dto.usuario.AtualizarEncarregadoRequest;
 import com.Lucca.Projeto1.dto.usuario.EncarregadoResumoResponse;
 import com.Lucca.Projeto1.dto.usuario.UsuarioAtualizacaoRequest;
 import com.Lucca.Projeto1.dto.usuario.UsuarioResponse;
+import com.Lucca.Projeto1.dto.usuario.UsuarioResumoResponse;
 import com.Lucca.Projeto1.service.UsuarioService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -47,6 +48,11 @@ public class UsuarioController {
     @GetMapping("/encarregados")
     public ResponseEntity<List<EncarregadoResumoResponse>> listarEncarregados() {
         return ResponseEntity.ok(usuarioService.listarEncarregados());
+    }
+
+    @GetMapping("/gerentes")
+    public ResponseEntity<List<UsuarioResumoResponse>> listarGerentes() {
+        return ResponseEntity.ok(usuarioService.listarGerentes());
     }
 
     @PostMapping("/encarregados")

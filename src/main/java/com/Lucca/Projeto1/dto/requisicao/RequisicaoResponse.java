@@ -2,6 +2,7 @@ package com.Lucca.Projeto1.dto.requisicao;
 
 import com.Lucca.Projeto1.model.StatusRequisicao;
 import com.Lucca.Projeto1.model.TipoMovimentacao;
+import com.Lucca.Projeto1.model.OrigemRequisicao;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,9 +18,14 @@ public record RequisicaoResponse(
         LocalDateTime criadaEm,
         LocalDateTime visualizadaEm,
         LocalDateTime concluidaEm,
-        List<Item> itens
+        List<Item> itens,
+        OrigemRequisicao origem,
+        UsuarioResumo operadorRegistrador,
+        UsuarioResumo encarregadoNecessidade,
+        UsuarioResumo gerenteDestinatario
 ) {
     public record UsuarioResumo(Long id, String nome) { }
     public record ContratoResumo(Long id, String nome) { }
-    public record Item(Long id, String descricao, Integer quantidade) { }
+    public record Item(Long id, String descricao, Integer quantidade, Integer quantidadeSolicitada,
+                       Integer quantidadeDisponivel, Integer quantidadeFaltante) { }
 }

@@ -9,6 +9,7 @@ public record EvidenciaMovimentacaoResponse(
         TipoEvidenciaMovimentacao tipo,
         LocalDateTime dataEvidencia,
         FuncionarioResumoResponse funcionario,
+        EncarregadoResumoResponse encarregado,
         UsuarioResumoResponse registradaPor,
         String nomeArquivo,
         String contentType,
@@ -17,6 +18,9 @@ public record EvidenciaMovimentacaoResponse(
         String urlArquivo
 ) {
     public record FuncionarioResumoResponse(Long id, String nome) {
+    }
+
+    public record EncarregadoResumoResponse(Long id, String nome) {
     }
 
     public record UsuarioResumoResponse(Long id, String username) {

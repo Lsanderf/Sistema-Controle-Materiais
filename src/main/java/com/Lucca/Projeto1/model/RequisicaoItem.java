@@ -27,6 +27,15 @@ public class RequisicaoItem {
 
     private Integer quantidade;
 
+    @Column(name = "quantidade_solicitada")
+    private Integer quantidadeSolicitada;
+
+    @Column(name = "quantidade_disponivel")
+    private Integer quantidadeDisponivel;
+
+    @Column(name = "quantidade_faltante")
+    private Integer quantidadeFaltante;
+
     public Long getId() { return id; }
     public Requisicao getRequisicao() { return requisicao; }
     public void setRequisicao(Requisicao requisicao) { this.requisicao = requisicao; }
@@ -34,4 +43,10 @@ public class RequisicaoItem {
     public void setDescricao(String descricao) { this.descricao = descricao; }
     public Integer getQuantidade() { return quantidade; }
     public void setQuantidade(Integer quantidade) { this.quantidade = quantidade; }
+    public Integer getQuantidadeSolicitada() { return quantidadeSolicitada; }
+    public void setQuantidadeSolicitada(Integer quantidadeSolicitada) { this.quantidadeSolicitada = quantidadeSolicitada; }
+    public Integer getQuantidadeDisponivel() { return quantidadeDisponivel; }
+    public void setQuantidadeDisponivel(Integer quantidadeDisponivel) { this.quantidadeDisponivel = quantidadeDisponivel; }
+    public Integer getQuantidadeFaltante() { return quantidadeFaltante; }
+    public void setQuantidadeFaltante(Integer quantidadeFaltante) { this.quantidadeFaltante = quantidadeFaltante; }
 }

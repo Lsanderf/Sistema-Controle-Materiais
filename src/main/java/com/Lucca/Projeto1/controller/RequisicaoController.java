@@ -2,6 +2,7 @@ package com.Lucca.Projeto1.controller;
 
 import com.Lucca.Projeto1.dto.requisicao.RequisicaoRequest;
 import com.Lucca.Projeto1.dto.requisicao.RequisicaoResponse;
+import com.Lucca.Projeto1.dto.requisicao.RequisicaoFaltaEstoqueRequest;
 import com.Lucca.Projeto1.service.RequisicaoService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -23,6 +24,13 @@ public class RequisicaoController {
 
     public RequisicaoController(RequisicaoService requisicaoService) {
         this.requisicaoService = requisicaoService;
+    }
+
+    @PostMapping("/falta-estoque")
+    public ResponseEntity<RequisicaoResponse> criarPorFaltaEstoque(
+            @Valid @RequestBody RequisicaoFaltaEstoqueRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(requisicaoService.criarPorFaltaEstoque(request));
     }
 
     @PostMapping

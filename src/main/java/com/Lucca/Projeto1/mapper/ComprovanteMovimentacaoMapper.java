@@ -2,6 +2,7 @@ package com.Lucca.Projeto1.mapper;
 
 import com.Lucca.Projeto1.dto.movimentacao.ComprovanteMovimentacaoResponse;
 import com.Lucca.Projeto1.dto.movimentacao.EvidenciaMovimentacaoResponse;
+import com.Lucca.Projeto1.model.AssinaturaRetirada;
 import com.Lucca.Projeto1.model.ComprovanteMovimentacao;
 
 import java.util.List;
@@ -13,7 +14,8 @@ public final class ComprovanteMovimentacaoMapper {
 
     public static ComprovanteMovimentacaoResponse paraResponse(
             ComprovanteMovimentacao comprovante,
-            List<EvidenciaMovimentacaoResponse> evidencias
+            List<EvidenciaMovimentacaoResponse> evidencias,
+            AssinaturaRetirada assinaturaRetirada
     ) {
         ComprovanteMovimentacaoResponse.FuncionarioResumoResponse funcionario =
                 comprovante.getFuncionarioId() == null
@@ -55,6 +57,29 @@ public final class ComprovanteMovimentacaoMapper {
                                 comprovante.getNotaFiscalDataEntrada()
                         );
 
+        ComprovanteMovimentacaoResponse.UsuarioResponsavelResumoResponse operadorResponsavel =
+                comprovante.getOperadorResponsavelId() == null ? null
+                        : new ComprovanteMovimentacaoResponse.UsuarioResponsavelResumoResponse(
+                                comprovante.getOperadorResponsavelId(), comprovante.getOperadorResponsavelNome());
+        ComprovanteMovimentacaoResponse.UsuarioResponsavelResumoResponse encarregadoAssinante =
+                comprovante.getEncarregadoAssinanteId() == null ? null
+                        : new ComprovanteMovimentacaoResponse.UsuarioResponsavelResumoResponse(
+                                comprovante.getEncarregadoAssinanteId(), comprovante.getEncarregadoAssinanteNome());
+        ComprovanteMovimentacaoResponse.AssinaturaRetiradaResponse assinatura =
+                assinaturaRetirada == null ? null
+                        : new ComprovanteMovimentacaoResponse.AssinaturaRetiradaResponse(
+                                new ComprovanteMovimentacaoResponse.UsuarioResponsavelResumoResponse(
+                                        assinaturaRetirada.getEncarregadoAssinante().getId(),
+                                        assinaturaRetirada.getEncarregadoAssinante().getNome()
+                                ),
+                                assinaturaRetirada.getDataAssinatura(),
+                                assinaturaRetirada.getContentType(),
+                                assinaturaRetirada.getTamanhoBytes(),
+                                assinaturaRetirada.getSha256(),
+                                "/movimentacoes/" + comprovante.getMovimentacaoId()
+                                        + "/assinatura-retirada/arquivo"
+                        );
+
         return new ComprovanteMovimentacaoResponse(
                 comprovante.getMovimentacaoId(),
                 comprovante.getTipo(),
@@ -72,6 +97,10 @@ public final class ComprovanteMovimentacaoMapper {
                 registradoPor,
                 notaFiscal,
                 comprovante.getMovimentacaoOrigemId(),
+                comprovante.getSolicitacaoRetiradaId(),
+                operadorResponsavel,
+                encarregadoAssinante,
+                assinatura,
                 evidencias,
                 comprovante.getGeradoEm(),
                 comprovante.getVersao()

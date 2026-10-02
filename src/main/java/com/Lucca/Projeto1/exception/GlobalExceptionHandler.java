@@ -94,6 +94,16 @@ public class GlobalExceptionHandler {
         return responder(HttpStatus.NOT_FOUND, exception.getMessage());
     }
 
+    @ExceptionHandler(EstoqueInsuficienteException.class)
+    public ResponseEntity<Map<String, Object>> tratarEstoqueInsuficiente(
+            EstoqueInsuficienteException exception
+    ) {
+        Map<String, Object> resposta = respostaBase(HttpStatus.CONFLICT, exception.getMessage());
+        resposta.put("codigo", "ESTOQUE_INSUFICIENTE");
+        resposta.put("itens", exception.getItens());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(resposta);
+    }
+
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<Map<String, Object>> tratarRotaNaoEncontrada(
             NoResourceFoundException exception

@@ -4,6 +4,7 @@ import com.Lucca.Projeto1.dto.movimentacao.MovimentacaoRequest;
 import com.Lucca.Projeto1.dto.movimentacao.EstornoMovimentacaoRequest;
 import com.Lucca.Projeto1.dto.movimentacao.ComprovanteMovimentacaoResponse;
 import com.Lucca.Projeto1.dto.movimentacao.EvidenciaMovimentacaoResponse;
+import com.Lucca.Projeto1.service.AssinaturaRetiradaService;
 import com.Lucca.Projeto1.service.ComprovanteMovimentacaoService;
 import com.Lucca.Projeto1.service.EvidenciaMovimentacaoService;
 import com.Lucca.Projeto1.service.MovimentacaoService;
@@ -27,15 +28,18 @@ public class MovimentacaoController {
     private final MovimentacaoService movimentacaoService;
     private final ComprovanteMovimentacaoService comprovanteService;
     private final EvidenciaMovimentacaoService evidenciaService;
+    private final AssinaturaRetiradaService assinaturaRetiradaService;
 
     public MovimentacaoController(
             MovimentacaoService movimentacaoService,
             ComprovanteMovimentacaoService comprovanteService,
-            EvidenciaMovimentacaoService evidenciaService
+            EvidenciaMovimentacaoService evidenciaService,
+            AssinaturaRetiradaService assinaturaRetiradaService
     ){
         this.movimentacaoService = movimentacaoService;
         this.comprovanteService = comprovanteService;
         this.evidenciaService = evidenciaService;
+        this.assinaturaRetiradaService = assinaturaRetiradaService;
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -148,6 +152,25 @@ public class MovimentacaoController {
                 .body(arquivo.recurso());
     }
 
+    @GetMapping("/{movimentacaoId}/assinatura-retirada/arquivo")
+    public ResponseEntity<Resource> buscarArquivoAssinaturaRetirada(
+            @PathVariable Long movimentacaoId
+    ) {
+        AssinaturaRetiradaService.ArquivoAssinatura arquivo =
+                assinaturaRetiradaService.buscarArquivo(movimentacaoId);
+        ContentDisposition disposition = ContentDisposition.inline()
+                .filename(arquivo.nomeArquivo(), StandardCharsets.UTF_8)
+                .build();
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(arquivo.contentType()))
+                .contentLength(arquivo.tamanhoBytes())
+                .cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .header(HttpHeaders.ETAG, '"' + arquivo.sha256() + '"')
+                .body(arquivo.recurso());
+    }
+
     @GetMapping("/funcionario/{funcionarioId}")
     public ResponseEntity<List<MovimentacaoResponse>>
     listarPorFuncionario(
@@ -156,6 +179,16 @@ public class MovimentacaoController {
         return ResponseEntity.ok(
                 movimentacaoService
                         .listarPorFuncionario(funcionarioId)
+        );
+    }
+
+    @GetMapping("/encarregado/{encarregadoId}")
+    public ResponseEntity<List<MovimentacaoResponse>>
+    listarPorEncarregado(
+            @PathVariable Long encarregadoId
+    ) {
+        return ResponseEntity.ok(
+                movimentacaoService.listarPorEncarregado(encarregadoId)
         );
     }
 
