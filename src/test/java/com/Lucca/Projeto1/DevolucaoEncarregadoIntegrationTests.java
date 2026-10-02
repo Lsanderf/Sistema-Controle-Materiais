@@ -63,6 +63,21 @@ class DevolucaoEncarregadoIntegrationTests {
     @Autowired private ComprovanteMovimentacaoService comprovanteService;
 
     @Test
+    void devolucaoSemFotoNaoCriaMovimentacaoNemAumentaEstoque() throws Exception {
+        Contexto contexto = criarContexto(10);
+        confirmarRetirada(contexto, 5);
+        clearInvocations(funcionarioRepository);
+
+        registrarDevolucao(contexto, contexto.encarregado(), 2, ImagemEvidenciaTestSupport.imagem("png", true), false)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.erro").value("O arquivo da foto é obrigatório"));
+
+        verify(funcionarioRepository, never()).findById(anyLong());
+        assertEquals(1, movimentacaoRepository.findByMaterialId(contexto.material().getId()).size());
+        assertEquals(5, materialRepository.findById(contexto.material().getId()).orElseThrow().getQuantidadeEstoque());
+    }
+
+    @Test
     void devolucaoNovaUsaUsuarioEncarregadoSemDependerDeFuncionarioEComprovaAIntegridadeDaAssinatura()
             throws Exception {
         Contexto contexto = criarContexto(10);
@@ -99,6 +114,8 @@ class DevolucaoEncarregadoIntegrationTests {
                 .andExpect(jsonPath("$.evidencias[0].funcionario").doesNotExist())
                 .andExpect(jsonPath("$.evidencias[0].encarregado.id").value(contexto.encarregado().getId()))
                 .andExpect(jsonPath("$.evidencias[0].encarregado.nome").value(contexto.encarregado().getNome()))
+                .andExpect(jsonPath("$.evidencias[1].tipo").value("FOTO_DEVOLUCAO"))
+                .andExpect(jsonPath("$.evidencias[1].encarregado.id").value(contexto.encarregado().getId()))
                 .andReturn();
 
         String urlArquivo = jsonResponse(comprovante).at("/evidencias/0/urlArquivo").asText();
@@ -106,6 +123,11 @@ class DevolucaoEncarregadoIntegrationTests {
                         .header(HttpHeaders.AUTHORIZATION, bearer(contexto.operadorToken())))
                 .andExpect(status().isOk())
                 .andExpect(content().bytes(assinatura));
+        String urlFoto = jsonResponse(comprovante).at("/evidencias/1/urlArquivo").asText();
+        mockMvc.perform(get(urlFoto)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(contexto.operadorToken())))
+                .andExpect(status().isOk())
+                .andExpect(content().bytes(ImagemEvidenciaTestSupport.imagem("jpg", true)));
     }
 
     @Test
@@ -120,6 +142,23 @@ class DevolucaoEncarregadoIntegrationTests {
                 true
         );
         confirmarRetirada(contexto, 5);
+
+        Contrato outroContrato = contratoRepository.save(new Contrato("Outro contrato " + contexto.sufixo(), "Teste", true));
+        Material outroMaterial = materialRepository.save(new Material("Outro material " + contexto.sufixo(), "Teste", 10));
+        for (Map<String, Object> request : List.of(
+                Map.<String, Object>of("encarregadoId", contexto.encarregado().getId(), "contratoId", outroContrato.getId(),
+                        "materialId", contexto.material().getId(), "quantidade", 1, "tipo", "DEVOLUCAO"),
+                Map.<String, Object>of("encarregadoId", contexto.encarregado().getId(), "contratoId", contexto.contrato().getId(),
+                        "materialId", outroMaterial.getId(), "quantidade", 1, "tipo", "DEVOLUCAO")
+        )) {
+            mockMvc.perform(multipart("/movimentacoes")
+                            .file(ImagemEvidenciaTestSupport.dados(json(request)))
+                            .file(ImagemEvidenciaTestSupport.assinatura())
+                            .file(ImagemEvidenciaTestSupport.foto())
+                            .header(HttpHeaders.AUTHORIZATION, bearer(contexto.operadorToken())))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.erro").value(containsString("quantidade ainda retirada")));
+        }
 
         registrarDevolucao(contexto, outroEncarregado, 1, ImagemEvidenciaTestSupport.imagem("png", true))
                 .andExpect(status().isConflict())
@@ -253,6 +292,16 @@ class DevolucaoEncarregadoIntegrationTests {
             int quantidade,
             byte[] assinatura
     ) throws Exception {
+        return registrarDevolucao(contexto, encarregado, quantidade, assinatura, true);
+    }
+
+    private org.springframework.test.web.servlet.ResultActions registrarDevolucao(
+            Contexto contexto,
+            Usuario encarregado,
+            int quantidade,
+            byte[] assinatura,
+            boolean comFoto
+    ) throws Exception {
         Map<String, Object> request = Map.of(
                 "encarregadoId", encarregado.getId(),
                 "contratoId", contexto.contrato().getId(),
@@ -260,14 +309,16 @@ class DevolucaoEncarregadoIntegrationTests {
                 "quantidade", quantidade,
                 "tipo", "DEVOLUCAO"
         );
-        return mockMvc.perform(multipart("/movimentacoes")
+        var multipartRequest = multipart("/movimentacoes")
                 .file(ImagemEvidenciaTestSupport.dados(json(request)))
                 .file(new MockMultipartFile(
                         "assinatura",
                         "assinatura.png",
                         MediaType.IMAGE_PNG_VALUE,
                         assinatura
-                ))
+                ));
+        if (comFoto) multipartRequest.file(ImagemEvidenciaTestSupport.foto());
+        return mockMvc.perform(multipartRequest
                 .header(HttpHeaders.AUTHORIZATION, bearer(contexto.operadorToken()))
                 .header("Idempotency-Key", "devolucao-" + UUID.randomUUID()));
     }

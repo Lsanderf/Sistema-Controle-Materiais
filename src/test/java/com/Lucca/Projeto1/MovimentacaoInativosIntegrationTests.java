@@ -231,7 +231,7 @@ class MovimentacaoInativosIntegrationTests {
         assertEquals(json(primeira).get("id").asLong(), json(repetida).get("id").asLong());
         assertEquals(15, estoque());
         assertEquals(2, movimentacaoRepository.count());
-        assertEquals(2, evidenciaRepository.count());
+        assertEquals(3, evidenciaRepository.count());
         assertEquals(2, comprovanteRepository.count());
     }
 
@@ -249,6 +249,7 @@ class MovimentacaoInativosIntegrationTests {
         ));
         MockMultipartHttpServletRequestBuilder request = movimentacaoAssinada(payload)
                 .header(HttpHeaders.AUTHORIZATION, operadorToken);
+        if (tipo == TipoMovimentacao.DEVOLUCAO) request.file(ImagemEvidenciaTestSupport.foto());
         if (idempotencyKey != null) {
             request.header("Idempotency-Key", idempotencyKey);
         }

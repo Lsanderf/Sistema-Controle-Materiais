@@ -1083,14 +1083,15 @@ class ApiIntegrationTests {
             TipoMovimentacao tipo,
             int quantidade
     ) throws Exception {
-        return mockMvc.perform(movimentacaoAssinada(json(Map.of(
+        var request = movimentacaoAssinada(json(Map.of(
                         "funcionarioId", contexto.funcionario().getId(),
                         "contratoId", contexto.contrato().getId(),
                         "materialId", contexto.material().getId(),
                         "quantidade", quantidade,
                         "tipo", tipo.name()
-                )))
-                .header(HttpHeaders.AUTHORIZATION, bearer(token)));
+                )));
+        if (tipo == TipoMovimentacao.DEVOLUCAO) request.file(ImagemEvidenciaTestSupport.foto());
+        return mockMvc.perform(request.header(HttpHeaders.AUTHORIZATION, bearer(token)));
     }
 
     private int registrarMovimentacaoStatus(

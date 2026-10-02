@@ -408,7 +408,9 @@ class ComprovanteMovimentacaoIntegrationTests {
             request.put("observacao", observacao);
         }
 
-        return mockMvc.perform(movimentacaoAssinada(json(request))
+        var multipartRequest = movimentacaoAssinada(json(request));
+        if (tipo == TipoMovimentacao.DEVOLUCAO) multipartRequest.file(ImagemEvidenciaTestSupport.foto());
+        return mockMvc.perform(multipartRequest
                         .header(HttpHeaders.AUTHORIZATION, bearer(operadorToken)))
                 .andExpect(status().isCreated())
                 .andReturn();

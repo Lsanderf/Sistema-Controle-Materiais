@@ -85,7 +85,9 @@ public class MovimentacaoService {
             throw new RegraNegocioException("Foto do material é permitida apenas na devolução");
         }
         var assinaturaValidada = imagemValidator.validar(assinatura, true);
-        var fotoValidada = foto == null ? null : imagemValidator.validar(foto, false);
+        var fotoValidada = request.getTipo() == TipoMovimentacao.DEVOLUCAO
+                ? imagemValidator.validar(foto, false)
+                : null;
         Usuario usuarioAutenticado = usuarioAutenticadoService.obter();
 
         String requestFingerprint =

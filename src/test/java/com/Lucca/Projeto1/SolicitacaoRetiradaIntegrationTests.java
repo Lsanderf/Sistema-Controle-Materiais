@@ -143,6 +143,52 @@ class SolicitacaoRetiradaIntegrationTests {
 
         assertEquals(2, movimentacaoRepository.findByMaterialId(primeiro.getId()).size()
                 + movimentacaoRepository.findByMaterialId(segundo.getId()).size());
+
+        mockMvc.perform(multipart("/solicitacoes-retirada/{id}/confirmar", solicitacaoId)
+                        .file(new org.springframework.mock.web.MockMultipartFile(
+                                "assinatura", "vazia.png", MediaType.IMAGE_PNG_VALUE, new byte[0]
+                        ))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token(encarregado.getUsername()))))
+                .andExpect(status().isConflict());
+        assertEquals(2, movimentacaoRepository.findByMaterialId(primeiro.getId()).size()
+                + movimentacaoRepository.findByMaterialId(segundo.getId()).size());
+    }
+
+    @Test
+    void solicitacaoPendenteNaoConfirmaSemAssinatura() throws Exception {
+        String sufixo = UUID.randomUUID().toString().substring(0, 8);
+        Usuario operador = TestUsuarioFactory.criarUsuario(usuarioService, "operador-sem-ass-" + sufixo, SENHA, Role.OPERADOR, true);
+        Usuario encarregado = TestUsuarioFactory.criarUsuario(usuarioService, "encarregado-sem-ass-" + sufixo, SENHA, Role.ENCARREGADO, true);
+        Contrato contrato = contratoRepository.save(new Contrato("Contrato sem assinatura " + sufixo, "Teste", true));
+        Material material = materialRepository.save(new Material("Material sem assinatura " + sufixo, "Teste", 5));
+        long solicitacaoId = criarSolicitacao(operador, encarregado, contrato,
+                List.of(Map.of("materialId", material.getId(), "quantidade", 2)));
+        String token = bearer(token(encarregado.getUsername()));
+
+        mockMvc.perform(multipart("/solicitacoes-retirada/{id}/confirmar", solicitacaoId)
+                        .header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(multipart("/solicitacoes-retirada/{id}/confirmar", solicitacaoId)
+                        .file(new org.springframework.mock.web.MockMultipartFile(
+                                "assinatura", "vazia.png", MediaType.IMAGE_PNG_VALUE, new byte[0]
+                        ))
+                        .header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isConflict());
+        mockMvc.perform(multipart("/solicitacoes-retirada/{id}/confirmar", solicitacaoId)
+                        .file(new org.springframework.mock.web.MockMultipartFile(
+                                "assinatura", "branca.png", MediaType.IMAGE_PNG_VALUE,
+                                ImagemEvidenciaTestSupport.imagem("png", false)
+                        ))
+                        .header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isConflict());
+
+        mockMvc.perform(get("/solicitacoes-retirada/{id}", solicitacaoId)
+                        .header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("AGUARDANDO_ASSINATURA"));
+        assertFalse(assinaturaRetiradaRepository.existsBySolicitacaoRetiradaId(solicitacaoId));
+        assertTrue(movimentacaoRepository.findByMaterialId(material.getId()).isEmpty());
+        assertEquals(5, materialRepository.findById(material.getId()).orElseThrow().getQuantidadeEstoque());
     }
 
     @Test

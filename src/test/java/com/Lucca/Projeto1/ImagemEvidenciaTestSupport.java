@@ -36,6 +36,10 @@ final class ImagemEvidenciaTestSupport {
         return new MockMultipartFile("assinatura", "assinatura.png", "image/png", imagem("png", true));
     }
 
+    static MockMultipartFile foto() throws IOException {
+        return new MockMultipartFile("foto", "foto.jpg", "image/jpeg", imagem("jpg", true));
+    }
+
     static MockMultipartFile dados(String json) {
         return new MockMultipartFile("movimentacao", "", MediaType.APPLICATION_JSON_VALUE,
                 json.getBytes(StandardCharsets.UTF_8));

@@ -94,7 +94,9 @@ class MovimentacaoComEvidenciasIntegrationTests {
     @ValueSource(strings = {"RETIRADA", "DEVOLUCAO"})
     void assinaturaObrigatoriaConcluiComEstoqueEComprovante(String tipo) throws Exception {
         if (tipo.equals("DEVOLUCAO")) historica();
-        MvcResult result = mvc.perform(requisicao(tipo).file(assinatura())
+        var request = requisicao(tipo).file(assinatura());
+        if (tipo.equals("DEVOLUCAO")) request.file(foto());
+        MvcResult result = mvc.perform(request
                         .header(HttpHeaders.AUTHORIZATION, operador))
                 .andExpect(status().isCreated()).andReturn();
         long id = json(result).get("id").asLong();
@@ -102,7 +104,7 @@ class MovimentacaoComEvidenciasIntegrationTests {
         mvc.perform(get("/movimentacoes/{id}/comprovante", id).header(HttpHeaders.AUTHORIZATION, operador))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.dataFinalizacao").isNotEmpty())
-                .andExpect(jsonPath("$.evidencias.length()").value(1))
+                .andExpect(jsonPath("$.evidencias.length()").value(tipo.equals("DEVOLUCAO") ? 2 : 1))
                 .andExpect(jsonPath("$.evidencias[0].tipo").value("ASSINATURA"));
     }
 
@@ -202,6 +204,10 @@ class MovimentacaoComEvidenciasIntegrationTests {
                 .andExpect(status().isConflict());
         assertEquals(antes, estado());
         mvc.perform(requisicao("DEVOLUCAO").file(assinatura()).header(HttpHeaders.AUTHORIZATION, operador))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.erro").value("O arquivo da foto é obrigatório"));
+        assertEquals(antes, estado());
+        mvc.perform(requisicao("DEVOLUCAO").file(assinatura()).file(foto()).header(HttpHeaders.AUTHORIZATION, operador))
                 .andExpect(status().isCreated());
         assertEquals(13, estoque());
     }

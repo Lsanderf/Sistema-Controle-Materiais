@@ -79,7 +79,10 @@ public class SolicitacaoRetiradaService {
         if (!solicitacao.getEncarregadoAssinante().getId().equals(encarregadoAutenticado.getId())) {
             throw new org.springframework.security.access.AccessDeniedException("SolicitaÃ§Ã£o destinada a outro encarregado");
         }
-        if (solicitacao.getStatus() == StatusSolicitacaoRetirada.CONFIRMADA) return paraResponse(solicitacao);
+        if (solicitacao.getStatus() == StatusSolicitacaoRetirada.CONFIRMADA) {
+            imagemValidator.validar(arquivoAssinatura, true);
+            return paraResponse(solicitacao);
+        }
         if (solicitacao.getStatus() != StatusSolicitacaoRetirada.AGUARDANDO_ASSINATURA) {
             throw new RegraNegocioException("A solicitaÃ§Ã£o nÃ£o pode ser confirmada no estado atual");
         }
