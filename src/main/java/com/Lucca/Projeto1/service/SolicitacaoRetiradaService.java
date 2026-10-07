@@ -17,6 +17,8 @@ import com.Lucca.Projeto1.repository.MaterialRepository;
 import com.Lucca.Projeto1.repository.MovimentacaoRepository;
 import com.Lucca.Projeto1.repository.SolicitacaoRetiradaRepository;
 import com.Lucca.Projeto1.repository.UsuarioRepository;
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -35,6 +37,10 @@ import java.util.stream.Collectors;
 
 @Service
 public class SolicitacaoRetiradaService {
+
+    private static final String INDICE_PENDENCIA_UNICA = "uk_solicitacoes_retirada_encarregado_pendente";
+    private static final String CONFLITO_PENDENCIA =
+            "O encarregado já possui uma solicitação de retirada aguardando assinatura.";
 
     private final SolicitacaoRetiradaRepository solicitacaoRepository;
     private final UsuarioRepository usuarioRepository;
@@ -196,6 +202,10 @@ public class SolicitacaoRetiradaService {
         if (encarregado.getRole() != Role.ENCARREGADO || !encarregado.isAtivo()) {
             throw new RegraNegocioException("O assinante deve ser um encarregado ativo");
         }
+        if (solicitacaoRepository.existsByEncarregadoAssinanteIdAndStatus(
+                encarregado.getId(), StatusSolicitacaoRetirada.AGUARDANDO_ASSINATURA)) {
+            throw new RegraNegocioException(CONFLITO_PENDENCIA);
+        }
 
         Contrato contrato = buscarContratoAtivo(request.contratoId());
         Map<Long, Integer> quantidades = quantidadesPorMaterial(request.itens());
@@ -229,7 +239,17 @@ public class SolicitacaoRetiradaService {
             item.setQuantidade(quantidades.get(id));
             solicitacao.adicionarItem(item);
         });
-        return paraResponse(solicitacaoRepository.saveAndFlush(solicitacao));
+        try {
+            return paraResponse(solicitacaoRepository.saveAndFlush(solicitacao));
+        } catch (DataIntegrityViolationException exception) {
+            for (Throwable causa = exception; causa != null; causa = causa.getCause()) {
+                if (causa instanceof ConstraintViolationException violacao
+                        && INDICE_PENDENCIA_UNICA.equals(violacao.getConstraintName())) {
+                    throw new RegraNegocioException(CONFLITO_PENDENCIA);
+                }
+            }
+            throw exception;
+        }
     }
 
     private Contrato buscarContratoAtivo(Long contratoId) {
