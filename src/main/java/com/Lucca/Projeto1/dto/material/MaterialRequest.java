@@ -1,5 +1,6 @@
 package com.Lucca.Projeto1.dto.material;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -27,5 +28,10 @@ public class MaterialRequest {
 
     public void setDescricao(String descricao) {
         this.descricao = descricao;
+    }
+
+    @JsonAnySetter
+    public void rejeitarCampoDesconhecido(String campo, Object valor) {
+        throw new IllegalArgumentException("Campo não permitido: " + campo);
     }
 }

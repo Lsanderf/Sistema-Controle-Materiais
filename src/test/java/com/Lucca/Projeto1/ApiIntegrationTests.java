@@ -469,7 +469,7 @@ class ApiIntegrationTests {
     @EnumSource(value = Role.class, names = {"ADMIN", "OPERADOR"})
     void cadastroDeMaterialNaoPermiteDefinirEstoqueInicialPeloRequest(Role role)
             throws Exception {
-        MvcResult result = mockMvc.perform(post("/materiais")
+        mockMvc.perform(post("/materiais")
                         .header(HttpHeaders.AUTHORIZATION,
                                 bearer(role == Role.ADMIN ? adminToken : operadorToken))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -478,39 +478,57 @@ class ApiIntegrationTests {
                                 "descricao", "Capacete para uso em obra",
                                 "quantidadeEstoque", 10000
                         ))))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.quantidadeEstoque").value(0))
-                .andReturn();
+                .andExpect(status().isBadRequest());
 
-        assertEquals(
-                0,
-                materialRepository.findById(
-                        jsonResponse(result).get("id").asLong()
-                ).orElseThrow().getQuantidadeEstoque()
-        );
+        assertEquals(0, materialRepository.count());
     }
 
-    @Test
-    void atualizacaoDeMaterialNaoPermiteAlterarEstoquePeloRequest()
+    @ParameterizedTest
+    @EnumSource(value = Role.class, names = {"ADMIN", "OPERADOR"})
+    void atualizacaoCadastralDeMaterialPreservaEstoque(Role role)
             throws Exception {
-        Material material = criarMaterial("Capacete", 0);
+        Material material = criarMaterial("Capacete", 15);
 
         mockMvc.perform(put("/materiais/{id}", material.getId())
-                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                        .header(HttpHeaders.AUTHORIZATION,
+                                bearer(role == Role.ADMIN ? adminToken : operadorToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "nome", "Capacete de Segurança",
+                                "descricao", "Modelo M"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nome").value("Capacete de Segurança"))
+                .andExpect(jsonPath("$.descricao").value("Modelo M"))
+                .andExpect(jsonPath("$.quantidadeEstoque").value(15));
+
+        Material atualizado = materialRepository.findById(material.getId()).orElseThrow();
+        assertEquals("Capacete de Segurança", atualizado.getNome());
+        assertEquals("Modelo M", atualizado.getDescricao());
+        assertEquals(15, atualizado.getQuantidadeEstoque());
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Role.class, names = {"ADMIN", "OPERADOR"})
+    void atualizacaoDeMaterialNaoPermiteAlterarEstoquePeloRequest(Role role)
+            throws Exception {
+        Material material = criarMaterial("Capacete", 15);
+
+        mockMvc.perform(put("/materiais/{id}", material.getId())
+                        .header(HttpHeaders.AUTHORIZATION,
+                                bearer(role == Role.ADMIN ? adminToken : operadorToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
                                 "nome", "Capacete atualizado",
                                 "descricao", "Descricao atualizada",
                                 "quantidadeEstoque", 10000
                         ))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.quantidadeEstoque").value(0));
+                .andExpect(status().isBadRequest());
 
-        assertEquals(
-                0,
-                materialRepository.findById(material.getId()).orElseThrow()
-                        .getQuantidadeEstoque()
-        );
+        Material preservado = materialRepository.findById(material.getId()).orElseThrow();
+        assertEquals(material.getNome(), preservado.getNome());
+        assertEquals(material.getDescricao(), preservado.getDescricao());
+        assertEquals(15, preservado.getQuantidadeEstoque());
     }
 
     @Test
@@ -670,13 +688,12 @@ class ApiIntegrationTests {
 
     @ParameterizedTest
     @EnumSource(value = Role.class, names = {"OPERADOR", "GERENTE"})
-    void perfisSemAcessoAdministrativoNaoPodemAlterarMateriais(Role role)
+    void regraResidualDeMateriaisBloqueiaOperacoesNaoAutorizadas(Role role)
             throws Exception {
         Material material = criarMaterial("Capacete", 8);
         String authorization = bearer(role == Role.OPERADOR ? operadorToken : gerenteToken);
 
         for (var request : List.of(
-                put("/materiais/{id}", material.getId()),
                 patch("/materiais/{id}", material.getId()),
                 delete("/materiais/{id}", material.getId()),
                 post("/materiais/{id}", material.getId()),
@@ -703,10 +720,10 @@ class ApiIntegrationTests {
     }
 
     @Test
-    void gerenteTambemPodeConsultarMateriaisParaPrepararRequisicoes() throws Exception {
+    void apenasAdminEOperadorPodemConsultarMateriais() throws Exception {
         Material material = criarMaterial("Capacete", 8);
 
-        for (String authToken : List.of(adminToken, operadorToken, gerenteToken)) {
+        for (String authToken : List.of(adminToken, operadorToken)) {
             mockMvc.perform(get("/materiais")
                             .header(HttpHeaders.AUTHORIZATION, bearer(authToken)))
                     .andExpect(status().isOk())
@@ -717,6 +734,12 @@ class ApiIntegrationTests {
                     .andExpect(jsonPath("$.nome").value("Capacete"));
         }
 
+        mockMvc.perform(get("/materiais")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken)))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/materiais/{id}", material.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken)))
+                .andExpect(status().isForbidden());
     }
 
     @Test

@@ -15,6 +15,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -27,6 +29,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -108,11 +111,11 @@ class MatrizAutorizacaoIntegrationTests {
     }
 
     @Test
-    void gerenteConsultaDadosParaRequisitarMasNaoOperaEstoque()
+    void gerenteConsultaContratosMasNaoAcessaMateriaisNemOperaEstoque()
             throws Exception {
         mockMvc.perform(get("/materiais")
                         .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken)))
-                .andExpect(status().isOk());
+                .andExpect(status().isForbidden());
         mockMvc.perform(get("/contratos")
                         .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken)))
                 .andExpect(status().isOk());
@@ -184,7 +187,7 @@ class MatrizAutorizacaoIntegrationTests {
 
         mockMvc.perform(get("/materiais")
                         .header(HttpHeaders.AUTHORIZATION, bearer(gerenteToken)))
-                .andExpect(status().isOk());
+                .andExpect(status().isForbidden());
         assertGetForbidden(gerenteToken, "/movimentacoes");
         assertGetForbidden(gerenteToken, "/notas-fiscais");
 
@@ -193,7 +196,7 @@ class MatrizAutorizacaoIntegrationTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
                                 "nome", "Material não autorizado",
-                                "descricao", "O gerente só consulta materiais para requisitar"
+                                "descricao", "O gerente não tem acesso a materiais"
                         ))))
                 .andExpect(status().isForbidden());
 
@@ -299,6 +302,85 @@ class MatrizAutorizacaoIntegrationTests {
         mockMvc.perform(delete("/contratos/{id}", contratoId)
                         .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
                 .andExpect(status().isOk());
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Role.class, names = {"ADMIN", "OPERADOR"})
+    void adminEOperadorPodemConsultarCriarEEditarMateriais(Role role) throws Exception {
+        String authorization = bearer(role == Role.ADMIN ? adminToken : operadorToken);
+
+        MvcResult result = mockMvc.perform(post("/materiais")
+                        .header(HttpHeaders.AUTHORIZATION, authorization)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "nome", "Capacete",
+                                "descricao", "Capacete antigo"
+                        ))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.quantidadeEstoque").value(0))
+                .andReturn();
+        long materialId = objectMapper.readTree(
+                result.getResponse().getContentAsString()
+        ).get("id").asLong();
+
+        mockMvc.perform(get("/materiais")
+                        .header(HttpHeaders.AUTHORIZATION, authorization))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(materialId));
+        mockMvc.perform(get("/materiais/{id}", materialId)
+                        .header(HttpHeaders.AUTHORIZATION, authorization))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nome").value("Capacete"));
+        mockMvc.perform(put("/materiais/{id}", materialId)
+                        .header(HttpHeaders.AUTHORIZATION, authorization)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "nome", "Capacete de Segurança",
+                                "descricao", "Modelo M"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nome").value("Capacete de Segurança"))
+                .andExpect(jsonPath("$.descricao").value("Modelo M"))
+                .andExpect(jsonPath("$.quantidadeEstoque").value(0));
+
+        Material atualizado = materialRepository.findById(materialId).orElseThrow();
+        assertEquals("Capacete de Segurança", atualizado.getNome());
+        assertEquals("Modelo M", atualizado.getDescricao());
+        assertEquals(0, atualizado.getQuantidadeEstoque());
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Role.class, names = {"GERENTE", "ENCARREGADO"})
+    void gerenteEEncarregadoNaoAcessamEndpointsDeMateriais(Role role) throws Exception {
+        String authorization = bearer(role == Role.GERENTE ? gerenteToken : encarregadoToken);
+        Material material = materialRepository.save(new Material("Capacete", "Capacete antigo", 15));
+        String payload = json(Map.of(
+                "nome", "Material não autorizado",
+                "descricao", "Alteração não autorizada"
+        ));
+
+        mockMvc.perform(get("/materiais")
+                        .header(HttpHeaders.AUTHORIZATION, authorization))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/materiais/{id}", material.getId())
+                        .header(HttpHeaders.AUTHORIZATION, authorization))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/materiais")
+                        .header(HttpHeaders.AUTHORIZATION, authorization)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(put("/materiais/{id}", material.getId())
+                        .header(HttpHeaders.AUTHORIZATION, authorization)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isForbidden());
+
+        Material preservado = materialRepository.findById(material.getId()).orElseThrow();
+        assertEquals("Capacete", preservado.getNome());
+        assertEquals("Capacete antigo", preservado.getDescricao());
+        assertEquals(15, preservado.getQuantidadeEstoque());
+        assertEquals(1, materialRepository.count());
     }
 
     private long criarContrato(
