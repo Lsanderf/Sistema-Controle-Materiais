@@ -1,6 +1,7 @@
 package com.Lucca.Projeto1.service;
 
 import com.Lucca.Projeto1.dto.requisicao.RequisicaoFaltaEstoqueRequest;
+import com.Lucca.Projeto1.dto.requisicao.RequisicaoEdicaoRequest;
 import com.Lucca.Projeto1.dto.requisicao.RequisicaoItemRequest;
 import com.Lucca.Projeto1.dto.requisicao.RequisicaoRequest;
 import com.Lucca.Projeto1.dto.requisicao.RequisicaoResponse;
@@ -25,8 +26,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -72,7 +75,7 @@ public class RequisicaoService {
             item.setQuantidade(itemRequest.quantidade());
             requisicao.adicionarItem(item);
         }
-        return paraResponse(requisicaoRepository.save(requisicao));
+        return paraResponse(requisicaoRepository.save(requisicao), gerente);
     }
 
     /** Registers stock shortage for the manager responsible for purchasing. */
@@ -124,7 +127,7 @@ public class RequisicaoService {
         if (requisicao.getItens().isEmpty()) {
             throw new RegraNegocioException("Stock is sufficient for the submitted materials");
         }
-        return paraResponse(requisicaoRepository.save(requisicao));
+        return paraResponse(requisicaoRepository.save(requisicao), operador);
     }
 
     @Transactional(readOnly = true)
@@ -138,7 +141,7 @@ public class RequisicaoService {
                     .filter(requisicao -> usuario.getId().equals(idDe(requisicao.getOperadorRegistrador()))).toList();
             default -> throw new AccessDeniedException("User cannot access requisitions");
         };
-        return requisicoes.stream().map(this::paraResponse).toList();
+        return requisicoes.stream().map(requisicao -> paraResponse(requisicao, usuario)).toList();
     }
 
     @Transactional(readOnly = true)
@@ -146,25 +149,26 @@ public class RequisicaoService {
         Usuario usuario = usuarioAutenticadoService.obter();
         Requisicao requisicao = buscarComDetalhes(id);
         garantirLeituraPermitida(requisicao, usuario);
-        return paraResponse(requisicao);
+        return paraResponse(requisicao, usuario);
     }
 
     @Transactional
     public RequisicaoResponse visualizar(Long id) {
         Usuario responsavel = usuarioAutenticadoService.obter();
-        Requisicao requisicao = buscarComDetalhes(id);
+        Requisicao requisicao = buscarComBloqueio(id);
         garantirResponsavelPelaAcao(requisicao, responsavel);
         if (requisicao.getStatus() == StatusRequisicao.PENDENTE) {
             requisicao.setStatus(StatusRequisicao.VISUALIZADA);
             requisicao.setVisualizadaEm(LocalDateTime.now());
         }
-        return paraResponse(requisicao);
+        requisicaoRepository.flush();
+        return paraResponse(requisicao, responsavel);
     }
 
     @Transactional
     public RequisicaoResponse concluir(Long id) {
         Usuario responsavel = usuarioAutenticadoService.obter();
-        Requisicao requisicao = buscarComDetalhes(id);
+        Requisicao requisicao = buscarComBloqueio(id);
         garantirResponsavelPelaAcao(requisicao, responsavel);
         if (requisicao.getStatus() == StatusRequisicao.CANCELADA || requisicao.getStatus() == StatusRequisicao.CONCLUIDA) {
             throw new RegraNegocioException("Requisition cannot be completed in its current status");
@@ -173,19 +177,85 @@ public class RequisicaoService {
         if (requisicao.getVisualizadaEm() == null) requisicao.setVisualizadaEm(agora);
         requisicao.setStatus(StatusRequisicao.CONCLUIDA);
         requisicao.setConcluidaEm(agora);
-        return paraResponse(requisicao);
+        requisicaoRepository.flush();
+        return paraResponse(requisicao, responsavel);
     }
 
     @Transactional
     public RequisicaoResponse cancelar(Long id) {
         Usuario usuario = usuarioAutenticadoService.obter();
-        Requisicao requisicao = buscarComDetalhes(id);
+        Requisicao requisicao = buscarComBloqueio(id);
         garantirCancelamentoPermitido(requisicao, usuario);
         if (requisicao.getStatus() != StatusRequisicao.PENDENTE && requisicao.getStatus() != StatusRequisicao.VISUALIZADA) {
             throw new RegraNegocioException("Requisition cannot be cancelled in its current status");
         }
         requisicao.setStatus(StatusRequisicao.CANCELADA);
-        return paraResponse(requisicao);
+        requisicaoRepository.flush();
+        return paraResponse(requisicao, usuario);
+    }
+
+    @Transactional
+    public RequisicaoResponse alterar(Long id, RequisicaoEdicaoRequest request) {
+        Usuario gerente = usuarioAutenticadoService.obter();
+        Requisicao requisicao = buscarComBloqueio(id);
+        if (gerente.getRole() != Role.GERENTE) {
+            throw new AccessDeniedException("Somente o gerente criador pode alterar a requisição");
+        }
+        if (requisicao.getOrigem() != OrigemRequisicao.MANUAL || requisicao.getTipo() != TipoMovimentacao.RETIRADA) {
+            throw new RegraNegocioException("Somente requisições manuais de retirada podem ser alteradas");
+        }
+        if (!gerenteCriador(requisicao, gerente)) {
+            throw new AccessDeniedException("Somente o gerente criador pode alterar a requisição");
+        }
+        if (requisicao.getStatus() != StatusRequisicao.PENDENTE) {
+            String mensagem = switch (requisicao.getStatus()) {
+                case VISUALIZADA -> "A requisição não pode mais ser alterada porque já foi visualizada pelo destinatário.";
+                case CONCLUIDA -> "A requisição concluída não pode ser alterada.";
+                case CANCELADA -> "A requisição cancelada não pode ser alterada.";
+                default -> "A requisição não pode ser alterada no estado atual.";
+            };
+            throw new RegraNegocioException(mensagem);
+        }
+        if (!Objects.equals(request.getVersao(), requisicao.getVersao())) {
+            throw new RegraNegocioException("A requisição foi atualizada por outra edição. Confira os dados atuais antes de alterar novamente.");
+        }
+
+        Map<Long, RequisicaoItem> existentes = requisicao.getItens().stream()
+                .collect(Collectors.toMap(RequisicaoItem::getId, item -> item));
+        var removidos = new HashSet<>(request.getItensRemovidos());
+        if (removidos.size() != request.getItensRemovidos().size()
+                || !existentes.keySet().containsAll(removidos)
+                || !existentes.keySet().containsAll(request.getItensAlterados().keySet())
+                || request.getItensAlterados().keySet().stream().anyMatch(removidos::contains)) {
+            throw new RegraNegocioException("Informe alterações e remoções de itens distintos pertencentes a esta requisição");
+        }
+        int total = existentes.size() - removidos.size() + request.getNovosItens().size();
+        if (total < 1 || total > 100) {
+            throw new RegraNegocioException("A requisição deve conter entre 1 e 100 itens");
+        }
+        if (request.observacaoFoiInformada()) requisicao.setObservacao(normalizarObservacao(request.getObservacao()));
+        request.getItensAlterados().forEach((itemId, alteracao) -> {
+            RequisicaoItemRequest conteudo = alteracao.getConteudo();
+            RequisicaoItem item = existentes.get(itemId);
+            item.setDescricao(conteudo.descricao().trim());
+            item.setQuantidade(conteudo.quantidade());
+        });
+        requisicao.getItens().removeIf(item -> removidos.contains(item.getId()));
+        for (RequisicaoEdicaoRequest.Item novo : request.getNovosItens()) {
+            RequisicaoItem item = new RequisicaoItem();
+            item.setDescricao(novo.descricao().trim());
+            item.setQuantidade(novo.quantidade());
+            requisicao.adicionarItem(item);
+        }
+        requisicao.setAtualizadaEm(LocalDateTime.now());
+        requisicao.setAtualizadaPor(gerente);
+        requisicaoRepository.flush();
+        return paraResponse(requisicao, gerente);
+    }
+
+    private Requisicao buscarComBloqueio(Long id) {
+        return requisicaoRepository.findByIdComBloqueio(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Requisition not found"));
     }
 
     private Requisicao buscarComDetalhes(Long id) {
@@ -204,12 +274,16 @@ public class RequisicaoService {
     }
 
     private void garantirResponsavelPelaAcao(Requisicao requisicao, Usuario usuario) {
+        if (!responsavelPelaAcao(requisicao, usuario)) {
+            throw new AccessDeniedException("Requisition is assigned to another user");
+        }
+    }
+
+    private boolean responsavelPelaAcao(Requisicao requisicao, Usuario usuario) {
         boolean manual = requisicao.getOrigem() != OrigemRequisicao.FALTA_ESTOQUE;
         Long responsavelId = manual ? idDe(requisicao.getEncarregadoDestinatario()) : idDe(requisicao.getGerenteDestinatario());
         Role roleObrigatoria = manual ? Role.ENCARREGADO : Role.GERENTE;
-        if (usuario.getRole() != roleObrigatoria || !usuario.getId().equals(responsavelId)) {
-            throw new AccessDeniedException("Requisition is assigned to another user");
-        }
+        return usuario.getRole() == roleObrigatoria && usuario.getId().equals(responsavelId);
     }
 
     private void garantirCancelamentoPermitido(Requisicao requisicao, Usuario usuario) {
@@ -256,7 +330,11 @@ public class RequisicaoService {
         return usuario == null ? null : usuario.getId();
     }
 
-    private RequisicaoResponse paraResponse(Requisicao requisicao) {
+    private boolean gerenteCriador(Requisicao requisicao, Usuario usuario) {
+        return usuario.getRole() == Role.GERENTE && usuario.getId().equals(idDe(requisicao.getGerenteSolicitante()));
+    }
+
+    private RequisicaoResponse paraResponse(Requisicao requisicao, Usuario usuario) {
         return new RequisicaoResponse(requisicao.getId(), resumo(requisicao.getGerenteSolicitante()),
                 resumo(requisicao.getEncarregadoDestinatario()),
                 new RequisicaoResponse.ContratoResumo(requisicao.getContrato().getId(), requisicao.getContrato().getNome()),
@@ -265,7 +343,11 @@ public class RequisicaoService {
                 .map(item -> new RequisicaoResponse.Item(item.getId(), item.getDescricao(), item.getQuantidade(),
                         item.getQuantidadeSolicitada(), item.getQuantidadeDisponivel(), item.getQuantidadeFaltante())).toList(),
                 requisicao.getOrigem(), resumo(requisicao.getOperadorRegistrador()),
-                resumo(requisicao.getEncarregadoNecessidade()), resumo(requisicao.getGerenteDestinatario()));
+                resumo(requisicao.getEncarregadoNecessidade()), resumo(requisicao.getGerenteDestinatario()),
+                requisicao.getVersao(), requisicao.getAtualizadaEm(), resumo(requisicao.getAtualizadaPor()),
+                gerenteCriador(requisicao, usuario) && requisicao.getOrigem() == OrigemRequisicao.MANUAL
+                        && requisicao.getTipo() == TipoMovimentacao.RETIRADA && requisicao.getStatus() == StatusRequisicao.PENDENTE,
+                requisicao.getStatus() == StatusRequisicao.PENDENTE && responsavelPelaAcao(requisicao, usuario));
     }
 
     private RequisicaoResponse.UsuarioResumo resumo(Usuario usuario) {

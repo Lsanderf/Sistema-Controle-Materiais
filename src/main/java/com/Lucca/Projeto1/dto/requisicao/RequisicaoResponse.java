@@ -22,7 +22,12 @@ public record RequisicaoResponse(
         OrigemRequisicao origem,
         UsuarioResumo operadorRegistrador,
         UsuarioResumo encarregadoNecessidade,
-        UsuarioResumo gerenteDestinatario
+        UsuarioResumo gerenteDestinatario,
+        Long versao,
+        LocalDateTime atualizadaEm,
+        UsuarioResumo atualizadaPor,
+        boolean podeAlterar,
+        boolean podeMarcarVisualizada
 ) {
     public record UsuarioResumo(Long id, String nome) { }
     public record ContratoResumo(Long id, String nome) { }
