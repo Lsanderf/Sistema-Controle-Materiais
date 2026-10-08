@@ -3,6 +3,7 @@ package com.Lucca.Projeto1.controller;
 import com.Lucca.Projeto1.dto.requisicao.RequisicaoRequest;
 import com.Lucca.Projeto1.dto.requisicao.RequisicaoResponse;
 import com.Lucca.Projeto1.dto.requisicao.RequisicaoFaltaEstoqueRequest;
+import com.Lucca.Projeto1.dto.requisicao.RequisicaoEdicaoRequest;
 import com.Lucca.Projeto1.service.RequisicaoService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -51,6 +52,11 @@ public class RequisicaoController {
     @PatchMapping("/{id}/visualizar")
     public ResponseEntity<RequisicaoResponse> visualizar(@PathVariable Long id) {
         return ResponseEntity.ok(requisicaoService.visualizar(id));
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<RequisicaoResponse> alterar(@PathVariable Long id, @Valid @RequestBody RequisicaoEdicaoRequest request) {
+        return ResponseEntity.ok(requisicaoService.alterar(id, request));
     }
 
     @PatchMapping("/{id}/concluir")

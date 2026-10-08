@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.dao.QueryTimeoutException;
 import org.springframework.http.HttpStatus;
@@ -199,6 +200,7 @@ public class GlobalExceptionHandler {
             CannotAcquireLockException.class,
             LockTimeoutException.class,
             OptimisticLockException.class,
+            OptimisticLockingFailureException.class,
             PessimisticLockException.class,
             PessimisticLockingFailureException.class,
             jakarta.persistence.QueryTimeoutException.class,

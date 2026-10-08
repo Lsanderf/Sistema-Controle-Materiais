@@ -13,6 +13,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -74,6 +75,17 @@ public class Requisicao {
     @Column(name = "concluida_em")
     private LocalDateTime concluidaEm;
 
+    @Version
+    @Column(nullable = false)
+    private Long versao;
+
+    @Column(name = "atualizada_em")
+    private LocalDateTime atualizadaEm;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "atualizada_por_id")
+    private Usuario atualizadaPor;
+
     @OneToMany(mappedBy = "requisicao", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<RequisicaoItem> itens = new ArrayList<>();
 
@@ -106,4 +118,9 @@ public class Requisicao {
     public void setConcluidaEm(LocalDateTime concluidaEm) { this.concluidaEm = concluidaEm; }
     public List<RequisicaoItem> getItens() { return itens; }
     public void adicionarItem(RequisicaoItem item) { item.setRequisicao(this); itens.add(item); }
+    public Long getVersao() { return versao; }
+    public LocalDateTime getAtualizadaEm() { return atualizadaEm; }
+    public void setAtualizadaEm(LocalDateTime atualizadaEm) { this.atualizadaEm = atualizadaEm; }
+    public Usuario getAtualizadaPor() { return atualizadaPor; }
+    public void setAtualizadaPor(Usuario atualizadaPor) { this.atualizadaPor = atualizadaPor; }
 }
