@@ -9,6 +9,8 @@ target/
 Thumbs.db
 
 scr/test/
+api.diff
+matriz.diff
 ### STS ###
 .apt_generated
 .classpath
